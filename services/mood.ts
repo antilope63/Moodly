@@ -1,127 +1,99 @@
-import { apiFetch } from '@/lib/api';
-import type { MoodEntry, MoodCategory, VisibilitySettings, MoodLabel, MoodContext } from '@/types/mood';
-import type { StrapiCollectionResponse, StrapiCollectionItem, StrapiSingleResponse } from '@/types/strapi';
+import { supabase } from '@/lib/supabase';
+import type { MoodCategory, MoodContext, MoodEntry, MoodLabel, VisibilitySettings } from '@/types/mood';
 
-type MoodCategoryAttributes = {
+type DbMoodCategory = {
+  id: number;
   name: string;
   slug: string;
   description?: string | null;
-  categoryType: MoodCategory['categoryType'];
+  category_type: MoodCategory['categoryType'];
   icon?: string | null;
   order?: number | null;
-  isDefault?: boolean;
+  is_default?: boolean;
 };
 
-type BasicUserAttributes = {
-  username: string;
-  email?: string | null;
-};
-
-type TeamAttributes = {
-  name: string;
-  slug?: string | null;
-};
-
-type MoodEntryAttributes = {
-  moodValue: number;
-  moodLabel: MoodLabel;
+type DbMoodEntry = {
+  id: number;
+  mood_value: number;
+  mood_label: MoodLabel;
   context: MoodContext;
-  isAnonymous: boolean;
-  reasonSummary?: string | null;
+  is_anonymous: boolean;
+  reason_summary?: string | null;
   note?: string | null;
-  loggedAt: string;
+  logged_at: string;
   visibility: VisibilitySettings;
-  categories: {
-    data: Array<StrapiCollectionItem<MoodCategoryAttributes>>;
-  };
-  additionalViewers?: {
-    data: Array<StrapiCollectionItem<BasicUserAttributes>>;
-  } | null;
-  loggedBy?: {
-    data: StrapiCollectionItem<BasicUserAttributes> | null;
-  } | null;
-  team?: {
-    data: StrapiCollectionItem<TeamAttributes> | null;
-  } | null;
 };
 
-const mapCategory = (item?: StrapiCollectionItem<MoodCategoryAttributes>): MoodCategory => ({
-  id: item?.id ?? 0,
-  name: item?.attributes.name ?? 'Catégorie',
-  slug: item?.attributes.slug ?? `category-${item?.id ?? 0}`,
-  description: item?.attributes.description ?? undefined,
-  categoryType: item?.attributes.categoryType ?? 'other',
-  icon: item?.attributes.icon ?? undefined,
-  order: item?.attributes.order ?? undefined,
-  isDefault: item?.attributes.isDefault ?? undefined,
+const mapCategory = (row: DbMoodCategory): MoodCategory => ({
+  id: row.id,
+  name: row.name,
+  slug: row.slug,
+  description: row.description ?? undefined,
+  categoryType: row.category_type ?? 'other',
+  icon: row.icon ?? undefined,
+  order: row.order ?? undefined,
+  isDefault: row.is_default ?? undefined,
 });
 
-const mapUser = (item?: StrapiCollectionItem<BasicUserAttributes>) =>
-  item
-    ? {
-        id: item.id,
-        username: item.attributes.username,
-        email: item.attributes.email ?? undefined,
-      }
-    : undefined;
-
-const mapTeam = (item?: StrapiCollectionItem<TeamAttributes>) =>
-  item
-    ? {
-        id: item.id,
-        name: item.attributes.name,
-        slug: item.attributes.slug ?? undefined,
-      }
-    : undefined;
-
-const mapMoodEntry = ({ id, attributes }: StrapiCollectionItem<MoodEntryAttributes>): MoodEntry => ({
-  id,
-  moodValue: attributes.moodValue,
-  moodLabel: attributes.moodLabel,
-  context: attributes.context,
-  isAnonymous: attributes.isAnonymous,
-  reasonSummary: attributes.reasonSummary ?? undefined,
-  note: attributes.note ?? undefined,
-  loggedAt: attributes.loggedAt,
-  visibility: attributes.visibility,
-  categories: attributes.categories?.data?.map(mapCategory) ?? [],
-  additionalViewers:
-    (attributes.additionalViewers?.data
-      ?.map(mapUser)
-      .filter(Boolean) as MoodEntry['additionalViewers']) ?? [],
-  loggedBy: mapUser(attributes.loggedBy?.data) ?? null,
-  team: mapTeam(attributes.team?.data) ?? null,
+const mapMoodEntry = (row: DbMoodEntry & { categories?: DbMoodCategory[] }): MoodEntry => ({
+  id: row.id,
+  moodValue: row.mood_value,
+  moodLabel: row.mood_label,
+  context: row.context,
+  isAnonymous: row.is_anonymous,
+  reasonSummary: row.reason_summary ?? undefined,
+  note: row.note ?? undefined,
+  loggedAt: row.logged_at,
+  visibility: row.visibility,
+  categories: (row.categories ?? []).map(mapCategory),
+  loggedBy: null,
+  additionalViewers: [],
+  team: null,
 });
 
 export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
-  const response = await apiFetch<StrapiCollectionResponse<MoodEntryAttributes>>('/api/mood-entries', {
-    query: {
-      'pagination[pageSize]': 25,
-    },
-  });
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(
+      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
+    )
+    .order('logged_at', { ascending: false })
+    .limit(25);
 
-  return response.data.map(mapMoodEntry);
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row: any) => {
+    const categoriesRaw = (row.categories ?? []).map((rel: any) => rel.mood_categories as DbMoodCategory);
+    return mapMoodEntry({ ...row, categories: categoriesRaw });
+  });
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
-  const response = await apiFetch<StrapiCollectionResponse<MoodEntryAttributes>>('/api/mood-entries', {
-    query: {
-      sort: 'loggedAt:desc',
-      'pagination[pageSize]': 100,
-    },
-  });
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(
+      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
+    )
+    .order('logged_at', { ascending: false })
+    .limit(100);
 
-  return response.data.map(mapMoodEntry);
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row: any) => {
+    const categoriesRaw = (row.categories ?? []).map((rel: any) => rel.mood_categories as DbMoodCategory);
+    return mapMoodEntry({ ...row, categories: categoriesRaw });
+  });
 };
 
 export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
-  const response = await apiFetch<StrapiCollectionResponse<MoodCategoryAttributes>>('/api/mood-categories', {
-    query: {
-      sort: 'order:asc',
-    },
-  });
+  const { data, error } = await supabase
+    .from('mood_categories')
+    .select('*')
+    .order('order', { ascending: true });
 
-  return response.data.map(mapCategory);
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map(mapCategory);
 };
 
 export type CreateMoodEntryPayload = {
@@ -134,30 +106,46 @@ export type CreateMoodEntryPayload = {
   loggedAt?: string;
   categories: number[];
   visibility: VisibilitySettings;
-  additionalViewers?: number[];
-  team?: number | null;
 };
 
 export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<MoodEntry> => {
-  const { categories, additionalViewers, team, ...rest } = payload;
+  const { categories, ...rest } = payload;
 
-  const body = {
-    data: {
-      ...rest,
-      categories,
-      additionalViewers,
-      team,
-    },
+  const insertPayload = {
+    mood_value: rest.moodValue,
+    mood_label: rest.moodLabel,
+    context: rest.context,
+    is_anonymous: rest.isAnonymous,
+    reason_summary: rest.reasonSummary ?? null,
+    note: rest.note ?? null,
+    logged_at: rest.loggedAt ?? new Date().toISOString(),
+    visibility: rest.visibility,
   };
 
-  const response = await apiFetch<StrapiSingleResponse<MoodEntryAttributes>>('/api/mood-entries', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  const { data, error } = await supabase.from('mood_entries').insert(insertPayload).select('*').single();
+  if (error || !data) throw new Error(error?.message ?? 'Unable to create mood entry.');
 
-  if (!response.data) {
-    throw new Error('Unable to create mood entry.');
+  // Insert relations into junction table if provided
+  if (categories && categories.length > 0) {
+    const junctionRows = categories.map((categoryId) => ({
+      mood_entry_id: data.id,
+      mood_category_id: categoryId,
+    }));
+    const { error: relError } = await supabase.from('mood_entry_categories').insert(junctionRows);
+    if (relError) throw new Error(relError.message);
   }
 
-  return mapMoodEntry(response.data);
+  // Re-fetch with categories for mapping consistency
+  const { data: fullRow, error: fetchError } = await supabase
+    .from('mood_entries')
+    .select(
+      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
+    )
+    .eq('id', data.id)
+    .single();
+
+  if (fetchError || !fullRow) throw new Error(fetchError?.message ?? 'Entry created but not retrievable.');
+
+  const categoriesRaw = (fullRow.categories ?? []).map((rel: any) => rel.mood_categories as DbMoodCategory);
+  return mapMoodEntry({ ...fullRow, categories: categoriesRaw });
 };
