@@ -1,73 +1,41 @@
-import { apiFetch } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import type { BasicUser, RoleType } from '@/types/mood';
 
-type StrapiRole = {
-  id: number;
-  name: string;
-  type: string;
-  description?: string | null;
-};
-
-type StrapiAuthUser = {
-  id: number;
-  username: string;
-  email?: string | null;
-  role?: StrapiRole | null;
-};
-
-type StrapiAuthResponse = {
-  jwt: string;
-  user: StrapiAuthUser;
-};
-
-type StrapiMeResponse = StrapiAuthUser;
-
-const resolveRoleType = (role?: StrapiRole | null): RoleType | null => {
-  const normalized = role?.type?.toLowerCase();
+const resolveRoleTypeFromMetadata = (role?: string | null): RoleType => {
+  const normalized = (role ?? '').toLowerCase();
   if (normalized === 'manager' || normalized === 'hr' || normalized === 'employee') {
-    return normalized;
+    return normalized as RoleType;
   }
-  return null;
+  return 'employee';
 };
 
 export const loginWithCredentials = async (
-  identifier: string,
+  email: string,
   password: string
 ): Promise<{ token: string; user: BasicUser }> => {
-  const authResponse = await apiFetch<StrapiAuthResponse>('/api/auth/local', {
-    method: 'POST',
-    body: JSON.stringify({
-      identifier,
-      password,
-    }),
-  });
-
-  let role = resolveRoleType(authResponse.user.role);
-
-  if (!role) {
-    const meResponse = await apiFetch<StrapiMeResponse>('/api/users/me', {
-      headers: {
-        Authorization: `Bearer ${authResponse.jwt}`,
-      },
-      query: {
-        populate: 'role',
-      },
-    });
-
-    role = resolveRoleType(meResponse.role);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const resolvedRole: RoleType = role ?? 'employee';
+  const session = data.session;
+  const user = data.user;
+  if (!session || !user) {
+    throw new Error("Authentification Supabase invalide.");
+  }
+
+  const role = resolveRoleTypeFromMetadata((user.user_metadata as any)?.role);
 
   const basicUser: BasicUser = {
-    id: authResponse.user.id,
-    username: authResponse.user.username,
-    email: authResponse.user.email ?? undefined,
-    role: resolvedRole,
+    // Supabase utilise des UUID string; nous convertissons en number placeholder 0
+    id: 0,
+    username: user.email?.split('@')[0] ?? 'user',
+    email: user.email ?? undefined,
+    role,
   };
 
   return {
-    token: authResponse.jwt,
+    token: session.access_token,
     user: basicUser,
   };
 };

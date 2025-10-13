@@ -58,8 +58,6 @@ export default function LogMoodScreen() {
         loggedAt: new Date().toISOString(),
         categories: selectedCategories,
         visibility,
-        additionalViewers: [],
-        team: null,
       });
       Alert.alert('Humeur enregistrée', 'Merci, ton humeur est prise en compte pour aujourd’hui.');
       setSelectedCategories([]);
