@@ -33,19 +33,26 @@ export default factories.createCoreController('api::mood-entry.mood-entry', () =
     return await super.find(ctx);
   },
   async create(ctx) {
-    if (!ctx.state?.user) {
+    const hasAuthenticatedUser = Boolean(ctx.state?.user);
+    const isApiTokenRequest = ctx.state?.auth?.strategy === 'api-token';
+
+    if (!hasAuthenticatedUser && !isApiTokenRequest) {
       return ctx.unauthorized('Authentification requise pour enregistrer une humeur.');
     }
 
     const payload = ctx.request?.body?.data ?? {};
-
-    ctx.request.body = {
-      data: {
-        ...payload,
-        loggedBy: ctx.state.user.id,
-        loggedAt: payload.loggedAt ?? new Date().toISOString(),
-      },
+    const data = {
+      ...payload,
+      loggedAt: payload.loggedAt ?? new Date().toISOString(),
     };
+
+    if (hasAuthenticatedUser) {
+      data.loggedBy = ctx.state.user.id;
+    } else {
+      delete data.loggedBy;
+    }
+
+    ctx.request.body = { data };
 
     return await super.create(ctx);
   },

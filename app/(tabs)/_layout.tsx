@@ -45,15 +45,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
         }}
       />
-      {isManagerViewEnabled ? (
-        <Tabs.Screen
-          name="manager"
-          options={{
-            title: 'Manager',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
-          }}
-        />
-      ) : null}
+      <Tabs.Screen
+        name="manager"
+        options={{
+          title: 'Manager',
+          href: isManagerViewEnabled ? undefined : null,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

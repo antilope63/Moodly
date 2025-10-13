@@ -1,12 +1,6 @@
 import { useMemo } from 'react';
-import {
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MoodCard } from '@/components/mood/mood-card';
 import { useMoodHistory } from '@/hooks/use-mood-history';
