@@ -1,212 +1,359 @@
-import { useMemo } from 'react';
+import React, { useState } from 'react';
 import {
-  FlatList,
-  RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  Pressable,
+  Image,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
-import { MoodCard } from '@/components/mood/mood-card';
-import { useMoodHistory } from '@/hooks/use-mood-history';
-
-const formatDate = (date: string) => {
-  try {
-    return new Date(date).toLocaleDateString(undefined, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
-  } catch {
-    return date;
-  }
+// --- Thème et Constantes ---
+// Inspiré de votre configuration Tailwind
+const theme = {
+  colors: {
+    primary: '#137fec',
+    backgroundLight: '#f6f7f8',
+    textDark: '#18181b', // zinc-900
+    textLight: '#a1a1aa', // zinc-400
+    border: '#e4e4e7', // zinc-200
+  },
+  fontFamily: 'Manrope, sans-serif', // Note: Assurez-vous que la police 'Manrope' est chargée dans votre projet Expo
 };
 
-const computeAverageMood = (scores: number[]): number => {
-  if (!scores.length) return 0;
-  return Math.round((scores.reduce((acc, score) => acc + score, 0) / scores.length) * 10) / 10;
-};
+// --- Données Mock ---
+const historyData = [
+  {
+    id: '1',
+    day: "Aujourd'hui",
+    mood: 'Bonne humeur',
+    color: '#22c55e', // green-500
+    bgColor: '#dcfce7', // green-100
+    icon: (
+      <Path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.07,48c-10.29,17.79-27.4,28-46.93,28s-36.63-10.2-46.92-28a8,8,0,1,1,13.84-8c7.47,12.91,19.21,20,33.08,20s25.61-7.1,33.07-20a8,8,0,0,1,13.86,8Z" />
+    ),
+  },
+  {
+    id: '2',
+    day: 'Hier',
+    mood: 'Humeur neutre',
+    color: '#eab308', // yellow-500
+    bgColor: '#fefce8', // yellow-100
+    icon: (
+      <Path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108ZM172,160H84a8,8,0,0,1,0-16h88a8,8,0,0,1,0,16Z" />
+    ),
+  },
+  {
+    id: '3',
+    day: '11 Oct. 2025',
+    mood: 'Mauvaise humeur',
+    color: '#ef4444', // red-500
+    bgColor: '#fee2e2', // red-100
+    icon: (
+      <Path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.07,32a8,8,0,0,1-13.86,8c-7.46,12.9-19.2,20-33.07,20s-25.61-7.1-33.08-20a8,8,0,1,1,13.84-8c10.29-17.79,27.4-28,46.93-28S162.29,140.2,170.93,152Z" />
+    ),
+  },
+];
 
+const commentsData = [
+  {
+    id: '1',
+    name: 'Sophie Martin',
+    date: '11 Oct. 2025',
+    text: "J'ai eu une journée difficile au travail, mais j'ai pu me détendre en faisant du sport après.",
+    avatar: 'https://i.pravatar.cc/150?u=sophie',
+  },
+];
+
+// --- Composant d'icône générique ---
+const Icon = ({ path, size = 24, color = 'currentColor' }: { path: React.ReactNode, size?: number, color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 256 256" fill={color}>
+    {path}
+  </Svg>
+);
+
+// --- Écran Principal ---
 export default function HistoryScreen() {
-  const { items, isLoading, error, refresh } = useMoodHistory();
-
-  const groupedHistory = useMemo(() => {
-    const groups = new Map<string, typeof items>();
-
-    items.forEach((entry) => {
-      const day = entry.loggedAt.slice(0, 10);
-      if (!groups.has(day)) {
-        groups.set(day, []);
-      }
-      groups.get(day)?.push(entry);
-    });
-
-    return Array.from(groups.entries())
-      .map(([date, entries]) => ({ date, entries }))
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [items]);
-
-  const averageScore = useMemo(() => computeAverageMood(items.map((item) => item.moodValue)), [items]);
-  const positiveDays = useMemo(
-    () => new Set(items.filter((item) => item.moodValue >= 4).map((item) => item.loggedAt.slice(0, 10))).size,
-    [items]
-  );
-  const totalDays = new Set(items.map((item) => item.loggedAt.slice(0, 10))).size;
+  const [activePeriod, setActivePeriod] = useState('7 jours');
+  const periods = ['7 jours', '30 jours'];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={groupedHistory}
-        keyExtractor={(item) => item.date}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.title}>Mon historique</Text>
-            <Text style={styles.subtitle}>Visualise tes humeurs et détecte les tendances.</Text>
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryCard, styles.primarySummary]}>
-                <Text style={styles.summaryLabel}>Mood moyen</Text>
-                <Text style={styles.summaryValue}>{averageScore || '—'}</Text>
-                <Text style={styles.summaryHint}>Basé sur {items.length} logs</Text>
-              </View>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>Journées positives</Text>
-                <Text style={styles.summaryValue}>{positiveDays}</Text>
-                <Text style={styles.summaryHint}>Sur {totalDays || '—'} jours logués</Text>
-              </View>
-            </View>
-            {error ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorTitle}>Impossible d’obtenir l’historique</Text>
-                <Text style={styles.errorMessage}>{error.message}</Text>
-              </View>
-            ) : null}
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable style={styles.headerButton}>
+            <Icon color={theme.colors.textDark} path={<Path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z" />} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Historique</Text>
+          <View style={styles.headerButton} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Filtres de Période */}
+          <View style={styles.periodFilterContainer}>
+            {periods.map((period) => (
+              <Pressable
+                key={period}
+                style={[
+                  styles.periodButton,
+                  activePeriod === period ? styles.periodButtonActive : styles.periodButtonInactive,
+                ]}
+                onPress={() => setActivePeriod(period)}>
+                <Text
+                  style={[
+                    styles.periodButtonText,
+                    activePeriod === period ? styles.periodButtonTextActive : styles.periodButtonTextInactive,
+                  ]}>
+                  {period}
+                </Text>
+              </Pressable>
+            ))}
           </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.dayCard}>
-            <Text style={styles.dayTitle}>{formatDate(item.date)}</Text>
-            {item.entries.map((entry) => (
-              <View key={entry.id} style={styles.moodEntry}>
-                <MoodCard mood={entry} />
+
+          {/* Filtres de Catégories */}
+          <View style={styles.categoryFilterContainer}>
+            <Pressable style={styles.categoryButton}>
+              <Text style={styles.categoryButtonText}>Type de raison</Text>
+              <Icon size={16} color={theme.colors.textLight} path={<Path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" />} />
+            </Pressable>
+            <Pressable style={styles.categoryButton}>
+              <Text style={styles.categoryButtonText}>Catégories</Text>
+              <Icon size={16} color={theme.colors.textLight} path={<Path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" />} />
+            </Pressable>
+          </View>
+
+          {/* Timeline */}
+          <View style={styles.timelineContainer}>
+            {historyData.map((item, index) => (
+              <View key={item.id} style={styles.timelineItem}>
+                {index < historyData.length - 1 && <View style={styles.timelineLine} />}
+                <View style={styles.timelineIconContainer}>
+                  <View style={[styles.timelineIcon, { backgroundColor: item.bgColor }]}>
+                    <Icon path={item.icon} color={item.color} />
+                  </View>
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineDay}>{item.day}</Text>
+                  <Text style={styles.timelineMood}>{item.mood}</Text>
+                </View>
               </View>
             ))}
           </View>
-        )}
-        ListEmptyComponent={
-          !isLoading && !error ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Commence à loguer</Text>
-              <Text style={styles.emptySubtitle}>
-                Ton historique apparaîtra ici dès ton premier enregistrement.
-              </Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
-      />
+          
+          {/* Bouton d'action */}
+          <Pressable style={styles.mainActionButton}>
+            <Text style={styles.mainActionButtonText}>Modifier l'humeur du jour</Text>
+          </Pressable>
+
+          {/* Section Commentaires */}
+          <View style={styles.commentsSection}>
+            <Text style={styles.sectionTitle}>Commentaires</Text>
+            {commentsData.map(comment => (
+                <View key={comment.id} style={styles.commentCard}>
+                    <Image source={{ uri: comment.avatar }} style={styles.commentAvatar} />
+                    <View style={styles.commentContent}>
+                        <View style={styles.commentHeader}>
+                            <Text style={styles.commentName}>{comment.name}</Text>
+                            <Text style={styles.commentDate}>{comment.date}</Text>
+                        </View>
+                        <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
+
+// --- Styles ---
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 18,
   },
   header: {
-    gap: 12,
-    marginTop: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  subtitle: {
-    color: '#475569',
-    fontSize: 14,
-  },
-  summaryRow: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'rgba(246, 247, 248, 0.8)',
   },
-  summaryCard: {
+  headerButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.textDark,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  periodFilterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  periodButton: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 18,
-    gap: 6,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 9999,
+    alignItems: 'center',
   },
-  primarySummary: {
-    backgroundColor: '#DBEAFE',
+  periodButtonActive: {
+    backgroundColor: theme.colors.primary,
   },
-  summaryLabel: {
-    color: '#1E3A8A',
+  periodButtonInactive: {
+    backgroundColor: 'rgba(19, 127, 236, 0.1)',
+  },
+  periodButtonText: {
     fontSize: 14,
+  },
+  periodButtonTextActive: {
+    color: '#fff',
     fontWeight: '600',
   },
-  summaryValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0F172A',
+  periodButtonTextInactive: {
+    color: theme.colors.primary,
+    fontWeight: '500',
   },
-  summaryHint: {
-    color: '#475569',
-    fontSize: 12,
-  },
-  dayCard: {
-    gap: 12,
-  },
-  dayTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-    textTransform: 'capitalize',
-  },
-  moodEntry: {
-    marginTop: 8,
-  },
-  empty: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
+  categoryFilterContainer: {
+    flexDirection: 'row',
     gap: 8,
+    marginBottom: 24,
   },
-  emptyTitle: {
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundLight,
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    color: '#3f3f46', // zinc-700
+  },
+  timelineContainer: {
+    position: 'relative',
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 16,
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 20,
+    top: 40,
+    width: 2,
+    height: '100%',
+    backgroundColor: theme.colors.border,
+  },
+  timelineIconContainer: {
+    position: 'relative',
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  timelineIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timelineContent: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  timelineDay: {
+    fontWeight: '700',
+    color: theme.colors.textDark,
+    fontSize: 16,
+  },
+  timelineMood: {
+    color: '#71717a', // zinc-500
+    fontSize: 14,
+  },
+  mainActionButton: {
+    marginTop: 32,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    borderRadius: 9999,
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  mainActionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  commentsSection: {
+    marginTop: 40,
+  },
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: theme.colors.textDark,
+    marginBottom: 16,
   },
-  emptySubtitle: {
-    color: '#475569',
-    textAlign: 'center',
+  commentCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundLight,
   },
-  errorBanner: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 18,
-    padding: 14,
-    gap: 4,
+  commentAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
   },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#991B1B',
+  commentContent: {
+      flex: 1,
   },
-  errorMessage: {
-    color: '#B91C1C',
-    fontSize: 12,
+  commentHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 8,
   },
+  commentName: {
+      fontWeight: '700',
+      color: theme.colors.textDark,
+  },
+  commentDate: {
+      fontSize: 12,
+      color: theme.colors.textLight,
+  },
+  commentText: {
+      marginTop: 4,
+      fontSize: 14,
+      color: '#52525b', // zinc-600
+  }
 });
