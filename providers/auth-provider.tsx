@@ -1,0 +1,61 @@
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from 'react';
+
+import type { BasicUser, RoleType } from '@/types/mood';
+
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+type AuthContextValue = {
+  status: AuthStatus;
+  user: BasicUser | null;
+  role: RoleType | null;
+  login: (user: BasicUser, token?: string) => void;
+  logout: () => void;
+};
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export const AuthProvider = ({ children }: PropsWithChildren<object>) => {
+  const [user, setUser] = useState<BasicUser | null>(null);
+  const [role, setRole] = useState<RoleType | null>(null);
+  const [status, setStatus] = useState<AuthStatus>('unauthenticated');
+
+  const login = useCallback((userPayload: BasicUser) => {
+    setUser(userPayload);
+    setRole(userPayload.role ?? 'employee');
+    setStatus('authenticated');
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setRole(null);
+    setStatus('unauthenticated');
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      user,
+      role,
+      login,
+      logout,
+    }),
+    [status, user, role, login, logout]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

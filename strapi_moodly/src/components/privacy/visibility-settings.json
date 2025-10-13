@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_privacy_visibility_settings",
+  "info": {
+    "displayName": "Visibility settings",
+    "description": "Controls who can see the details of a mood entry"
+  },
+  "attributes": {
+    "shareMoodWithAll": {
+      "type": "boolean",
+      "default": true
+    },
+    "showReasonToPeers": {
+      "type": "enumeration",
+      "enum": ["hidden", "anonymized", "visible"],
+      "default": "anonymized",
+      "required": true
+    },
+    "showReasonToManagers": {
+      "type": "enumeration",
+      "enum": ["hidden", "anonymized", "visible"],
+      "default": "visible",
+      "required": true
+    },
+    "showReasonToHr": {
+      "type": "enumeration",
+      "enum": ["hidden", "anonymized", "visible"],
+      "default": "visible",
+      "required": true
+    },
+    "allowCustomRecipients": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
