@@ -1,98 +1,165 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useMemo } from 'react';
+import {
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Badge } from '@/components/ui/badge';
+import { MoodCard } from '@/components/mood/mood-card';
+import { useMoodFeed } from '@/hooks/use-mood-feed';
+import { useAuth } from '@/providers/auth-provider';
 
-export default function HomeScreen() {
+const Header = ({
+  name,
+  lastUpdated,
+  totalPosts,
+}: {
+  name?: string;
+  lastUpdated?: Date;
+  totalPosts: number;
+}) => (
+  <View style={styles.header}>
+    <Text style={styles.greeting}>Bonjour {name ?? 'Moodlover'} 👋</Text>
+    <Text style={styles.subtitle}>Voici le pouls de ton équipe aujourd’hui.</Text>
+    <View style={styles.summaryRow}>
+      <Badge label={`${totalPosts} humeurs loguées`} tone="info" />
+      {lastUpdated ? <Text style={styles.updatedAt}>Mise à jour {lastUpdated.toLocaleTimeString()}</Text> : null}
+    </View>
+  </View>
+);
+
+const EmptyPlaceholder = () => (
+  <View style={styles.empty}>
+    <Text style={styles.emptyTitle}>Aucun log pour l’instant</Text>
+    <Text style={styles.emptySubtitle}>Encourage ton équipe à partager son humeur aujourd’hui.</Text>
+  </View>
+);
+
+const ErrorBanner = ({ message }: { message: string }) => (
+  <View style={styles.errorBanner}>
+    <Text style={styles.errorTitle}>Impossible de charger le feed</Text>
+    <Text style={styles.errorMessage}>{message}</Text>
+  </View>
+);
+
+export default function FeedScreen() {
+  const { user } = useAuth();
+  const { moods, isLoading, error, refresh, lastUpdated } = useMoodFeed();
+
+  const highlightId = useMemo(() => moods.at(0)?.id, [moods]);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={moods}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => (
+          <MoodCard mood={item} highlightReason={item.id === highlightId && Boolean(item.reasonSummary)} />
+        )}
+        ListHeaderComponent={
+          <>
+            <Header name={user?.username} lastUpdated={lastUpdated} totalPosts={moods.length} />
+            {error ? <ErrorBanner message={error.message} /> : null}
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>Fil des humeurs</Text>
+              <Text style={styles.sectionSubtitle}>Dernières 24h</Text>
+            </View>
+          </>
+        }
+        ListEmptyComponent={!isLoading && !error ? <EmptyPlaceholder /> : null}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#EEF2FF',
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 16,
+  },
+  header: {
+    paddingTop: 12,
+    gap: 8,
+  },
+  greeting: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  subtitle: {
+    color: '#475569',
+    fontSize: 15,
+  },
+  summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  updatedAt: {
+    color: '#475569',
+    fontSize: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  separator: {
+    height: 20,
+  },
+  empty: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  emptySubtitle: {
+    color: '#475569',
+    textAlign: 'center',
+  },
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 20,
+    padding: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#991B1B',
+  },
+  errorMessage: {
+    color: '#B91C1C',
+    fontSize: 13,
   },
 });

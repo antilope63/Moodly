@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mood_entries",
+  "info": {
+    "singularName": "mood-entry",
+    "pluralName": "mood-entries",
+    "displayName": "Mood entry",
+    "description": "Logs of employee moods with contextual details and privacy controls"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "content-type-builder": {
+      "visible": true
+    }
+  },
+  "attributes": {
+    "moodValue": {
+      "type": "integer",
+      "min": 1,
+      "max": 5,
+      "required": true
+    },
+    "moodLabel": {
+      "type": "enumeration",
+      "enum": ["awful", "rough", "neutral", "positive", "great"],
+      "required": true
+    },
+    "context": {
+      "type": "enumeration",
+      "enum": ["personal", "professional", "mixed"],
+      "default": "professional",
+      "required": true
+    },
+    "isAnonymous": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "reasonSummary": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "note": {
+      "type": "text"
+    },
+    "loggedAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "visibility": {
+      "type": "component",
+      "repeatable": false,
+      "component": "privacy.visibility-settings",
+      "required": true
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::mood-category.mood-category"
+    },
+    "loggedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "team": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::team.team"
+    },
+    "additionalViewers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
