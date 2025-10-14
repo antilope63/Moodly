@@ -1,7 +1,7 @@
 import Button from "@/components/button";
 import Input from "@/components/input";
-import { sendPasswordResetEmail } from "@/services/auth";
-import { useRouter } from "expo-router";
+import { supabase } from "@/lib/supabase";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react-native";
 import {
@@ -20,10 +20,20 @@ const backgroundImage = require("../public/PastelBackground.png");
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    access_token?: string;
+    refresh_token?: string;
+    type?: string;
+  }>();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const sheetTranslate = useRef(new Animated.Value(0)).current;
   const sheetOpacity = useRef(new Animated.Value(1)).current;
 
@@ -75,6 +85,27 @@ export default function ForgotPasswordScreen() {
     };
   }, [sheetOpacity, sheetTranslate]);
 
+  // Si retour depuis l'email Supabase avec tokens, établir la session
+  useEffect(() => {
+    const establishSession = async () => {
+      try {
+        const access = params?.access_token;
+        const refresh = params?.refresh_token;
+        if (access && refresh) {
+          const { supabase } = await import("@/lib/supabase");
+          const { error } = await supabase.auth.setSession({
+            access_token: String(access),
+            refresh_token: String(refresh),
+          });
+          if (error) {
+            // no-op, on laisse l'utilisateur saisir le nouveau mot de passe quand même
+          }
+        }
+      } catch {}
+    };
+    establishSession();
+  }, [params]);
+
   const handleSubmit = async () => {
     setMessage(null);
     setError(null);
@@ -85,13 +116,70 @@ export default function ForgotPasswordScreen() {
     }
     setIsLoading(true);
     try {
-      await sendPasswordResetEmail(trimmed);
-      setMessage(
-        "Si un compte existe pour cet email, un lien de réinitialisation a été envoyé."
-      );
+      // Préférer un code OTP pour s'affranchir des redirections navigateur
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: { shouldCreateUser: false },
+      });
+      if (error) throw error;
+      setOtpRequested(true);
+      setMessage("Un code à 6 chiffres t'a été envoyé par email.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : undefined;
       setError(msg || "Impossible d'envoyer l'email pour le moment.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    setMessage(null);
+    setError(null);
+    if (!password || password.length < 6) {
+      setError("Mot de passe trop court (≥ 6 caractères).");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { supabase } = await import("@/lib/supabase");
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      setMessage("Mot de passe mis à jour. Tu peux te connecter.");
+      setTimeout(() => router.replace("/login"), 800);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : undefined;
+      setError(msg || "Impossible de mettre à jour le mot de passe.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setMessage(null);
+    setError(null);
+    const trimmed = email.trim();
+    if (!trimmed || otp.length < 6) {
+      setError("Renseigne l'email et le code (6 chiffres).");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: trimmed,
+        token: otp,
+        type: "email",
+      });
+      if (error) throw error;
+      // Après vérification, une session est ouverte: on affiche le formulaire nouveau mot de passe
+      setOtpVerified(true);
+      setMessage("Code vérifié. Saisis ton nouveau mot de passe.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : undefined;
+      setError(msg || "Code invalide ou expiré.");
     } finally {
       setIsLoading(false);
     }
@@ -114,33 +202,165 @@ export default function ForgotPasswordScreen() {
               },
             ]}
           >
-            <Text style={styles.heading}>Mot de passe oublié</Text>
-            <View style={styles.form}>
-              <Input
-                value={email}
-                onChangeText={(val) => {
-                  setEmail(val);
-                  if (error) setError(null);
-                  if (message) setMessage(null);
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-                placeholder="john.doe@example.com"
-                label="Email"
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              {message ? <Text style={styles.info}>{message}</Text> : null}
-
-              <Button
-                title="Envoyer"
-                onPress={handleSubmit}
-                loading={isLoading}
-              />
-              <Text style={styles.backLink} onPress={() => router.back()}>
-                Retour à la connexion
-              </Text>
-            </View>
+            {params?.access_token && params?.refresh_token ? (
+              <>
+                <Text style={styles.heading}>Nouveau mot de passe</Text>
+                <View style={styles.form}>
+                  <Input
+                    value={password}
+                    onChangeText={(v) => {
+                      setPassword(v);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    label="Mot de passe"
+                  />
+                  <Input
+                    value={confirm}
+                    onChangeText={(v) => {
+                      setConfirm(v);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    label="Confirme le mot de passe"
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  {message ? <Text style={styles.info}>{message}</Text> : null}
+                  <Button
+                    title="Mettre à jour"
+                    onPress={handleUpdatePassword}
+                    loading={isLoading}
+                  />
+                  <Text
+                    style={styles.backLink}
+                    onPress={() => router.replace("/login")}
+                  >
+                    Retour à la connexion
+                  </Text>
+                </View>
+              </>
+            ) : otpVerified ? (
+              <>
+                <Text style={styles.heading}>Nouveau mot de passe</Text>
+                <View style={styles.form}>
+                  <Input
+                    value={password}
+                    onChangeText={(v) => {
+                      setPassword(v);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    label="Mot de passe"
+                  />
+                  <Input
+                    value={confirm}
+                    onChangeText={(v) => {
+                      setConfirm(v);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    label="Confirme le mot de passe"
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  {message ? <Text style={styles.info}>{message}</Text> : null}
+                  <Button
+                    title="Mettre à jour"
+                    onPress={handleUpdatePassword}
+                    loading={isLoading}
+                  />
+                  <Text
+                    style={styles.backLink}
+                    onPress={() => router.replace("/login")}
+                  >
+                    Retour à la connexion
+                  </Text>
+                </View>
+              </>
+            ) : otpRequested ? (
+              <>
+                <Text style={styles.heading}>Entre le code reçu par email</Text>
+                <View style={styles.form}>
+                  <Input
+                    value={email}
+                    onChangeText={(val) => {
+                      setEmail(val);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoCorrect={false}
+                    placeholder="john.doe@example.com"
+                    label="Email"
+                  />
+                  <Input
+                    value={otp}
+                    onChangeText={(v) => {
+                      setOtp(v);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    keyboardType="number-pad"
+                    placeholder="123456"
+                    label="Code à 6 chiffres"
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  {message ? <Text style={styles.info}>{message}</Text> : null}
+                  <Button
+                    title="Valider le code"
+                    onPress={handleVerifyOtp}
+                    loading={isLoading}
+                  />
+                  <Text
+                    style={styles.backLink}
+                    onPress={() => {
+                      setOtpRequested(false);
+                      setOtp("");
+                      setMessage(null);
+                    }}
+                  >
+                    Renvoyer un code
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.heading}>Mot de passe oublié</Text>
+                <View style={styles.form}>
+                  <Input
+                    value={email}
+                    onChangeText={(val) => {
+                      setEmail(val);
+                      if (error) setError(null);
+                      if (message) setMessage(null);
+                    }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoCorrect={false}
+                    placeholder="john.doe@example.com"
+                    label="Email"
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                  {message ? <Text style={styles.info}>{message}</Text> : null}
+                  <Button
+                    title="Recevoir un code"
+                    onPress={handleSubmit}
+                    loading={isLoading}
+                  />
+                  <Text style={styles.backLink} onPress={() => router.back()}>
+                    Retour à la connexion
+                  </Text>
+                </View>
+              </>
+            )}
           </Animated.View>
         </View>
       </SafeAreaView>

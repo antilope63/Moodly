@@ -1,6 +1,7 @@
 import { APP_NAME } from '@/constants/config';
 import { supabase } from '@/lib/supabase';
 import type { BasicUser, RoleType } from '@/types/mood';
+import { createURL } from 'expo-linking';
 
 const resolveRoleTypeFromMetadata = (role?: string | null): RoleType => {
   const normalized = (role ?? '').toLowerCase();
@@ -46,7 +47,8 @@ export const loginWithCredentials = async (
  * Retourne true si l'envoi a été initié correctement.
  */
 export const sendPasswordResetEmail = async (email: string): Promise<boolean> => {
-  const redirectTo = undefined; // Laisser Supabase utiliser l'URL par défaut de deep link Expo si configurée
+  // Redirige vers l'écran forgot-password (même écran pour initier et finaliser)
+  const redirectTo = createURL('/forgot-password');
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
   });
