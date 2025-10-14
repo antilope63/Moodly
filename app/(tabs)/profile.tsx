@@ -42,9 +42,10 @@ const moodValueToEmoji = (value: number) => {
   }
 };
 
+// --- Logique du Graphique Corrigée ---
 const CHART_HEIGHT = 100;
-const SVG_WIDTH = Dimensions.get('window').width - 32;
-const HORIZONTAL_PADDING = 10;
+const SVG_WIDTH = Dimensions.get('window').width - 32; // Largeur totale de la carte
+const HORIZONTAL_PADDING = 10; // Marge pour que les points ne soient pas coupés
 const CHART_DRAWING_WIDTH = SVG_WIDTH - HORIZONTAL_PADDING * 2;
 
 
@@ -57,7 +58,8 @@ const MoodEvolutionChart = ({ data, activePeriod }: { data: MoodEntry[]; activeP
     return days.map(date => {
       const entryForDay = data.find(entry => isSameDay(new Date(entry.loggedAt), date));
       return {
-        label: format(date, activePeriod === 'Mois' ? 'dd/MM' : 'E', { locale: fr }),
+        // CORRECTION : On affiche juste le jour pour la vue "Mois"
+        label: format(date, 'd', { locale: fr }),
         score: entryForDay ? entryForDay.moodValue : 0,
       };
     });
@@ -72,6 +74,7 @@ const MoodEvolutionChart = ({ data, activePeriod }: { data: MoodEntry[]; activeP
         return [];
     }
     return chartData.map((point, index) => {
+      // CORRECTION : Calcul de X avec la marge de sécurité
       const x = HORIZONTAL_PADDING + (index / (chartData.length - 1)) * CHART_DRAWING_WIDTH;
       const y = CHART_HEIGHT - ((point.score / 5) * (CHART_HEIGHT - 20)) + 10;
       return { x, y, score: point.score };
@@ -115,13 +118,19 @@ const MoodEvolutionChart = ({ data, activePeriod }: { data: MoodEntry[]; activeP
         )}
       </Svg>
       <View style={styles.graphLabelContainer}>
-        {chartData.map((day, index) => (
-          <View key={index} style={styles.labelWrapper}>
-            <Text style={styles.chartLabelText}>
-              {activePeriod === 'Mois' ? (index % 5 === 0 ? day.label : '') : day.label}
+        {activePeriod === 'Semaine' ? (
+          chartData.map((day, index) => (
+            <Text key={index} style={styles.chartLabelText}>
+              {day.label}
             </Text>
-          </View>
-        ))}
+          ))
+        ) : (
+          <>
+            <Text style={[styles.chartLabelText, {textAlign: 'left'}]}>{chartData[0]?.label}</Text>
+            <Text style={[styles.chartLabelText, {textAlign: 'center'}]}>{chartData[14]?.label}</Text>
+            <Text style={[styles.chartLabelText, {textAlign: 'right'}]}>{chartData[29]?.label}</Text>
+          </>
+        )}
       </View>
     </View>
   );
@@ -217,7 +226,7 @@ export default function HistoryScreen() {
                 </Pressable>
               </View>
               <View style={styles.timelineContainer}>
-                {items.slice(0, 2).map(item => ( // Affiche seulement les 2 derniers logs
+                {items.slice(0, 2).map(item => (
                   <TimelineItem key={item.id} item={item} />
                 ))}
               </View>
@@ -295,9 +304,19 @@ const styles = StyleSheet.create({
   chartWrapper: { alignItems: 'center', marginTop: 16, paddingBottom: 8 },
   chartContainer: { height: CHART_HEIGHT, justifyContent: 'center' },
   chartPlaceholder: { color: theme.colors.subtleLight, fontSize: 14, textAlign: 'center' },
-  graphLabelContainer: { flexDirection: 'row', justifyContent: 'space-between', width: CHART_DRAWING_WIDTH, marginTop: 8, alignSelf: 'center' },
-  labelWrapper: { flex: 1, alignItems: 'center' },
-  chartLabelText: { fontSize: 10, color: theme.colors.subtleLight, textTransform: 'none' },
+  graphLabelContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    width: '100%', 
+    marginTop: 8,
+    paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  chartLabelText: { 
+    fontSize: 11, 
+    color: theme.colors.subtleLight, 
+    textTransform: 'capitalize',
+    // On retire flex: 1 pour que le texte prenne sa largeur naturelle
+  },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12},
   seeAllText: { color: theme.colors.primary, fontSize: 14, fontWeight: '600' },
   timelineContainer: { gap: 8 },
