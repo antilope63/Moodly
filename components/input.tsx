@@ -13,16 +13,42 @@ type InputProps = TextInputProps & {
   error?: boolean;
   label?: string;
   showPasswordToggle?: boolean;
+  passwordVisiblePlaceholder?: string;
+  passwordHiddenPlaceholder?: string;
 };
 
 export default function Input(props: InputProps) {
-  const { style, error, label, showPasswordToggle, secureTextEntry, ...rest } =
-    props;
+  const {
+    style,
+    error,
+    label,
+    showPasswordToggle,
+    secureTextEntry,
+    passwordVisiblePlaceholder,
+    passwordHiddenPlaceholder,
+    placeholder,
+    ...rest
+  } = props;
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const computedSecure = useMemo(() => {
     if (!secureTextEntry) return false;
     return !isPasswordVisible;
   }, [secureTextEntry, isPasswordVisible]);
+  const effectivePlaceholder = useMemo(() => {
+    if (showPasswordToggle && secureTextEntry) {
+      return isPasswordVisible
+        ? passwordVisiblePlaceholder ?? "Passe123*"
+        : passwordHiddenPlaceholder ?? "••••••••";
+    }
+    return placeholder;
+  }, [
+    showPasswordToggle,
+    secureTextEntry,
+    isPasswordVisible,
+    passwordVisiblePlaceholder,
+    passwordHiddenPlaceholder,
+    placeholder,
+  ]);
   return (
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -32,6 +58,7 @@ export default function Input(props: InputProps) {
             placeholderTextColor="#6b7280"
             style={[styles.input, style, styles.inputWithButton]}
             secureTextEntry={computedSecure}
+            placeholder={effectivePlaceholder}
             {...rest}
           />
           {secureTextEntry ? (
@@ -58,6 +85,7 @@ export default function Input(props: InputProps) {
           placeholderTextColor="#6b7280"
           style={[styles.input, error && styles.inputError, style]}
           secureTextEntry={secureTextEntry}
+          placeholder={effectivePlaceholder}
           {...rest}
         />
       )}

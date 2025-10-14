@@ -147,9 +147,9 @@ export default function LoginScreen() {
                   setPassword(value);
                   if (error) setError(null);
                 }}
-                placeholder="••••••••"
+                placeholder="Passe123*"
                 secureTextEntry
-                label="Password"
+                label="Mot de passe"
                 showPasswordToggle
               />
               {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -166,19 +166,19 @@ export default function LoginScreen() {
                 >
                   {rememberMe ? <View style={styles.checkboxInner} /> : null}
                 </Pressable>
-                <Text style={styles.rememberLabel}>Remember me</Text>
+                <Text style={styles.rememberLabel}>Se souvenir de moi</Text>
 
                 <Pressable
                   accessibilityRole="link"
                   style={styles.linkPressable}
                   onPress={() => router.push("/forgot-password")}
                 >
-                  <Text style={styles.linkText}>Forgot password?</Text>
+                  <Text style={styles.linkText}>Mot de passe oublié ?</Text>
                 </Pressable>
               </View>
 
               <Button
-                title="Sign in"
+                title="Se connecter"
                 onPress={handleSubmit}
                 loading={isLoading}
               />

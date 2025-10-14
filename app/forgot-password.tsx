@@ -215,7 +215,7 @@ export default function ForgotPasswordScreen() {
                     }}
                     secureTextEntry
                     showPasswordToggle
-                    placeholder="••••••••"
+                    placeholder="Passe123*"
                     label="Mot de passe"
                   />
                   <Input
@@ -227,7 +227,7 @@ export default function ForgotPasswordScreen() {
                     }}
                     secureTextEntry
                     showPasswordToggle
-                    placeholder="••••••••"
+                    placeholder="Passe123*"
                     label="Confirme le mot de passe"
                   />
                   {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -258,7 +258,7 @@ export default function ForgotPasswordScreen() {
                     }}
                     secureTextEntry
                     showPasswordToggle
-                    placeholder="••••••••"
+                    placeholder="Passe123*"
                     label="Mot de passe"
                   />
                   <Input
@@ -270,7 +270,7 @@ export default function ForgotPasswordScreen() {
                     }}
                     secureTextEntry
                     showPasswordToggle
-                    placeholder="••••••••"
+                    placeholder="Passe123*"
                     label="Confirme le mot de passe"
                   />
                   {error ? <Text style={styles.error}>{error}</Text> : null}
