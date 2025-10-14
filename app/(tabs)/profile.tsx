@@ -8,6 +8,8 @@ import {
   Pressable,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useMoodHistory } from '@/hooks/use-mood-history';
 import { format, subDays, isSameDay } from 'date-fns';
@@ -40,13 +42,9 @@ const moodValueToEmoji = (value: number) => {
   }
 };
 
-// --- Logique du Graphique Corrigée ---
 const CHART_HEIGHT = 100;
-// Largeur totale disponible dans la carte (largeur de l'écran moins les paddings de la carte)
-const SVG_WIDTH = Dimensions.get('window').width - 32; // 16px padding de chaque côté
-// Marge intérieure pour éviter que les points ne soient coupés sur les bords
-const HORIZONTAL_PADDING = 8;
-// Zone de dessin réelle pour la courbe, en tenant compte de la marge
+const SVG_WIDTH = Dimensions.get('window').width - 32;
+const HORIZONTAL_PADDING = 10;
 const CHART_DRAWING_WIDTH = SVG_WIDTH - HORIZONTAL_PADDING * 2;
 
 
@@ -74,7 +72,6 @@ const MoodEvolutionChart = ({ data, activePeriod }: { data: MoodEntry[]; activeP
         return [];
     }
     return chartData.map((point, index) => {
-      // Le calcul de X se fait dans la zone de dessin, puis on ajoute la marge de gauche
       const x = HORIZONTAL_PADDING + (index / (chartData.length - 1)) * CHART_DRAWING_WIDTH;
       const y = CHART_HEIGHT - ((point.score / 5) * (CHART_HEIGHT - 20)) + 10;
       return { x, y, score: point.score };
@@ -119,20 +116,41 @@ const MoodEvolutionChart = ({ data, activePeriod }: { data: MoodEntry[]; activeP
       </Svg>
       <View style={styles.graphLabelContainer}>
         {chartData.map((day, index) => (
-          <Text key={index} style={styles.chartLabelText}>
-            {activePeriod === 'Mois' ? (index % 5 === 0 ? day.label : '') : day.label}
-          </Text>
+          <View key={index} style={styles.labelWrapper}>
+            <Text style={styles.chartLabelText}>
+              {activePeriod === 'Mois' ? (index % 5 === 0 ? day.label : '') : day.label}
+            </Text>
+          </View>
         ))}
       </View>
     </View>
   );
 };
 
+// Composant pour un item de la timeline, réutilisable
+const TimelineItem = ({ item }: { item: MoodEntry }) => (
+  <View style={styles.timelineItem}>
+    <Text style={styles.timelineEmoji}>{moodValueToEmoji(item.moodValue)}</Text>
+    <View style={styles.timelineContent}>
+      <View style={styles.timelineHeader}>
+        <Text style={styles.timelineMood}>{item.moodLabel}</Text>
+        <Text style={styles.timelineDate}>
+          {format(new Date(item.loggedAt), 'd MMM yyyy', { locale: fr })}
+        </Text>
+      </View>
+      <Text style={styles.timelineNote} numberOfLines={1}>
+        {item.reasonSummary || 'Aucune note'}
+      </Text>
+    </View>
+  </View>
+);
+
 export default function HistoryScreen() {
   const { items, isLoading, error } = useMoodHistory();
   const { user, logout } = useAuth();
   const router = useRouter();
   const [activePeriod, setActivePeriod] = useState('Semaine');
+  const [isHistoryModalVisible, setHistoryModalVisible] = useState(false);
   const periods = ['Semaine', 'Mois'];
 
   const handleLogout = () => {
@@ -180,16 +198,9 @@ export default function HistoryScreen() {
                 {periods.map((period) => (
                   <Pressable
                     key={period}
-                    style={[
-                      styles.periodButton,
-                      activePeriod === period ? styles.periodButtonActive : styles.periodButtonInactive,
-                    ]}
+                    style={[ styles.periodButton, activePeriod === period ? styles.periodButtonActive : styles.periodButtonInactive ]}
                     onPress={() => setActivePeriod(period)}>
-                    <Text
-                      style={[
-                        styles.periodButtonText,
-                        activePeriod === period ? styles.periodButtonTextActive : styles.periodButtonTextInactive,
-                      ]}>
+                    <Text style={[ styles.periodButtonText, activePeriod === period ? styles.periodButtonTextActive : styles.periodButtonTextInactive ]}>
                       {period}
                     </Text>
                   </Pressable>
@@ -201,24 +212,13 @@ export default function HistoryScreen() {
             <View style={styles.card}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.cardTitlePrimary}>Derniers logs</Text>
-                <Pressable><Text style={styles.seeAllText}>Voir tout</Text></Pressable>
+                <Pressable onPress={() => setHistoryModalVisible(true)}>
+                    <Text style={styles.seeAllText}>Voir tout</Text>
+                </Pressable>
               </View>
               <View style={styles.timelineContainer}>
-                {items.slice(0, 3).map(item => (
-                  <View key={item.id} style={styles.timelineItem}>
-                    <Text style={styles.timelineEmoji}>{moodValueToEmoji(item.moodValue)}</Text>
-                    <View style={styles.timelineContent}>
-                      <View style={styles.timelineHeader}>
-                        <Text style={styles.timelineMood}>{item.moodLabel}</Text>
-                        <Text style={styles.timelineDate}>
-                          {format(new Date(item.loggedAt), 'd MMM', { locale: fr })}
-                        </Text>
-                      </View>
-                      <Text style={styles.timelineNote} numberOfLines={1}>
-                        {item.reasonSummary || 'Aucune note'}
-                      </Text>
-                    </View>
-                  </View>
+                {items.slice(0, 2).map(item => ( // Affiche seulement les 2 derniers logs
+                  <TimelineItem key={item.id} item={item} />
                 ))}
               </View>
             </View>
@@ -239,6 +239,30 @@ export default function HistoryScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isHistoryModalVisible}
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Historique des logs</Text>
+                    <Pressable onPress={() => setHistoryModalVisible(false)}>
+                        <Text style={styles.modalCloseButton}>Fermer</Text>
+                    </Pressable>
+                </View>
+                <FlatList
+                    data={items}
+                    renderItem={({ item }) => <TimelineItem item={item} />}
+                    keyExtractor={item => item.id.toString()}
+                    ItemSeparatorComponent={() => <View style={{height: 8}} />}
+                />
+            </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -253,10 +277,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
   },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  profileHeader: { flexDirection: 'row', alignItems: 'center' },
   avatar: { marginRight: 12 },
   userInfo: { flex: 1 },
   username: { fontSize: 18, fontWeight: '700', color: theme.colors.foregroundLight },
@@ -274,19 +295,9 @@ const styles = StyleSheet.create({
   chartWrapper: { alignItems: 'center', marginTop: 16, paddingBottom: 8 },
   chartContainer: { height: CHART_HEIGHT, justifyContent: 'center' },
   chartPlaceholder: { color: theme.colors.subtleLight, fontSize: 14, textAlign: 'center' },
-  graphLabelContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    width: CHART_DRAWING_WIDTH, 
-    marginTop: 8,
-    alignSelf: 'center',
-  },
-  chartLabelText: { 
-    fontSize: 10, 
-    color: theme.colors.subtleLight, 
-    textTransform: 'capitalize',
-    textAlign: 'center',
-  },
+  graphLabelContainer: { flexDirection: 'row', justifyContent: 'space-between', width: CHART_DRAWING_WIDTH, marginTop: 8, alignSelf: 'center' },
+  labelWrapper: { flex: 1, alignItems: 'center' },
+  chartLabelText: { fontSize: 10, color: theme.colors.subtleLight, textTransform: 'none' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12},
   seeAllText: { color: theme.colors.primary, fontSize: 14, fontWeight: '600' },
   timelineContainer: { gap: 8 },
@@ -296,10 +307,49 @@ const styles = StyleSheet.create({
   timelineHeader: { flexDirection: 'row', justifyContent: 'space-between' },
   timelineMood: { fontWeight: '600', color: theme.colors.foregroundLight, textTransform: 'capitalize' },
   timelineDate: { fontSize: 14, color: theme.colors.subtleLight },
-  timelineNote: { marginTop: 4, fontSize: 14, color: theme.colors.subtleLight },
+  timelineNote: { marginTop: 4, fontSize: 14, color: theme.colors.subtleLight, flexShrink: 1 },
   statsGrid: { flexDirection: 'row', justifyContent: 'space-around', },
   statItem: { alignItems: 'center' },
   statValue: { fontSize: 24, fontWeight: '700', color: theme.colors.primary },
   statLabel: { fontSize: 14, color: theme.colors.subtleLight },
   errorText: { color: 'red', textAlign: 'center', marginTop: 20 },
+  // Styles pour la modale
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.foregroundLight,
+  },
+  modalCloseButton: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  }
 });
