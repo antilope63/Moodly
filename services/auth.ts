@@ -1,3 +1,4 @@
+import { APP_NAME } from '@/constants/config';
 import { supabase } from '@/lib/supabase';
 import type { BasicUser, RoleType } from '@/types/mood';
 
@@ -38,4 +39,19 @@ export const loginWithCredentials = async (
     token: session.access_token,
     user: basicUser,
   };
+};
+
+/**
+ * Envoie un email de réinitialisation du mot de passe via Supabase.
+ * Retourne true si l'envoi a été initié correctement.
+ */
+export const sendPasswordResetEmail = async (email: string): Promise<boolean> => {
+  const redirectTo = undefined; // Laisser Supabase utiliser l'URL par défaut de deep link Expo si configurée
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+  if (error) {
+    throw new Error(error.message || `Échec d'envoi de l'email ${APP_NAME}.`);
+  }
+  return true;
 };
