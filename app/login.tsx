@@ -4,19 +4,19 @@ import { useAuth } from "@/providers/auth-provider";
 import { loginWithCredentials } from "@/services/auth";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react-native";
 import {
-  ImageBackground,
   Animated,
   Easing,
+  ImageBackground,
   Keyboard,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import type { KeyboardEvent } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const backgroundImage = require("../public/PastelBackground.png");
 
@@ -32,8 +32,10 @@ export default function LoginScreen() {
   const sheetOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
     const handleShow = (event: KeyboardEvent) => {
       const height = event?.endCoordinates?.height ?? 0;
@@ -112,7 +114,7 @@ export default function LoginScreen() {
       style={styles.background}
       imageStyle={styles.backgroundImage}
     >
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.content}>
           <Animated.View
             style={[
@@ -156,7 +158,10 @@ export default function LoginScreen() {
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: rememberMe }}
                   onPress={() => setRememberMe((prev) => !prev)}
-                  style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
+                  style={[
+                    styles.checkbox,
+                    rememberMe && styles.checkboxChecked,
+                  ]}
                 >
                   {rememberMe ? <View style={styles.checkboxInner} /> : null}
                 </Pressable>
