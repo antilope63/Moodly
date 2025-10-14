@@ -2,6 +2,7 @@ import Button from "@/components/button";
 import Input from "@/components/input";
 import { useAuth } from "@/providers/auth-provider";
 import { loginWithCredentials } from "@/services/auth";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react-native";
@@ -164,7 +165,9 @@ export default function LoginScreen() {
                     rememberMe && styles.checkboxChecked,
                   ]}
                 >
-                  {rememberMe ? <View style={styles.checkboxInner} /> : null}
+                  {rememberMe ? (
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  ) : null}
                 </Pressable>
                 <Text style={styles.rememberLabel}>Se souvenir de moi</Text>
 
