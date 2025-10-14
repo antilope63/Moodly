@@ -51,12 +51,36 @@ const mapMoodEntry = (row: DbMoodEntry & { categories?: DbMoodCategory[] }): Moo
   team: null,
 });
 
+/** Sélection imbriquée explicite pour éviter toute ambiguïté d'ID */
+const MOOD_WITH_CATEGORIES_SELECT = `
+  id,
+  mood_value,
+  mood_label,
+  context,
+  is_anonymous,
+  reason_summary,
+  note,
+  logged_at,
+  visibility,
+  categories:mood_entry_categories(
+    mood_category_id,
+    mood_categories(
+      id,
+      name,
+      slug,
+      description,
+      category_type,
+      icon,
+      "order",
+      is_default
+    )
+  )
+`;
+
 export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
   const { data, error } = await supabase
     .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
+    .select(MOOD_WITH_CATEGORIES_SELECT)
     .order('logged_at', { ascending: false })
     .limit(25);
 
@@ -69,11 +93,39 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
+  // 1) Récupérer l'utilisateur courant (auth obligatoire)
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) throw new Error(userError.message);
+  if (!user) throw new Error('Not authenticated');
+
+  // 2) Sélection explicite + filtre strict sur ton user_id
   const { data, error } = await supabase
     .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
+    .select(`
+      id,
+      mood_value,
+      mood_label,
+      context,
+      is_anonymous,
+      reason_summary,
+      note,
+      logged_at,
+      visibility,
+      categories:mood_entry_categories(
+        mood_category_id,
+        mood_categories(
+          id,
+          name,
+          slug,
+          description,
+          category_type,
+          icon,
+          "order",
+          is_default
+        )
+      )
+    `)
+    .eq('user_id', user.id)         // ✅ ne ramène que tes logs
     .order('logged_at', { ascending: false })
     .limit(100);
 
@@ -88,7 +140,7 @@ export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
 export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
   const { data, error } = await supabase
     .from('mood_categories')
-    .select('*')
+    .select('id, name, slug, description, category_type, icon, "order", is_default') // explicite aussi ici
     .order('order', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -97,54 +149,60 @@ export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
 };
 
 export type CreateMoodEntryPayload = {
+  teamId?: number | null;
   moodValue: number;
-  moodLabel: MoodLabel;
-  context: MoodContext;
+  moodLabel: MoodLabel;      // ⚠️ doit matcher EXACTEMENT l’ENUM DB
+  context: MoodContext;      // ⚠️ idem (ex: 'pro' / 'perso' selon ta DB)
   isAnonymous: boolean;
   reasonSummary?: string | null;
   note?: string | null;
-  loggedAt?: string;
+  loggedAt?: string;         // (non utilisé côté RPC; la DB timestamp)
   categories: number[];
-  visibility: VisibilitySettings;
+  visibility: VisibilitySettings; // mets null si tu veux laisser le DEFAULT côté DB
 };
 
 export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<MoodEntry> => {
-  const { categories, ...rest } = payload;
+  const {
+    teamId = null,
+    moodValue,
+    moodLabel,
+    context,
+    isAnonymous,
+    reasonSummary = null,
+    note = null,
+    categories,
+    visibility,
+  } = payload;
 
-  const insertPayload = {
-    mood_value: rest.moodValue,
-    mood_label: rest.moodLabel,
-    context: rest.context,
-    is_anonymous: rest.isAnonymous,
-    reason_summary: rest.reasonSummary ?? null,
-    note: rest.note ?? null,
-    logged_at: rest.loggedAt ?? new Date().toISOString(),
-    visibility: rest.visibility,
-  };
+  // 1) Insert via RPC (SECURITY DEFINER)
+  const { data: rpcData, error: rpcError } = await supabase.rpc('log_mood_full', {
+    _team_id: teamId,
+    _mood_value: moodValue,
+    _mood_label: moodLabel as any,  // adapte si tes enums diffèrent côté DB
+    _context: context as any,       // idem
+    _is_anonymous: isAnonymous,
+    _reason_summary: reasonSummary,
+    _note: note,
+    _visibility: visibility ?? null,
+    _categories: (categories && categories.length > 0) ? categories : null,
+  });
 
-  const { data, error } = await supabase.from('mood_entries').insert(insertPayload).select('*').single();
-  if (error || !data) throw new Error(error?.message ?? 'Unable to create mood entry.');
-
-  // Insert relations into junction table if provided
-  if (categories && categories.length > 0) {
-    const junctionRows = categories.map((categoryId) => ({
-      mood_entry_id: data.id,
-      mood_category_id: categoryId,
-    }));
-    const { error: relError } = await supabase.from('mood_entry_categories').insert(junctionRows);
-    if (relError) throw new Error(relError.message);
+  if (rpcError || !rpcData || rpcData.length === 0) {
+    throw new Error(rpcError?.message ?? 'Unable to create mood entry (RPC).');
   }
 
-  // Re-fetch with categories for mapping consistency
+  const entryId = rpcData[0].id;
+
+  // 2) Re-fetch avec sélection explicite (évite id ambigu)
   const { data: fullRow, error: fetchError } = await supabase
     .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
-    .eq('id', data.id)
+    .select(MOOD_WITH_CATEGORIES_SELECT)
+    .eq('id', entryId)
     .single();
 
-  if (fetchError || !fullRow) throw new Error(fetchError?.message ?? 'Entry created but not retrievable.');
+  if (fetchError || !fullRow) {
+    throw new Error(fetchError?.message ?? 'Entry created but not retrievable.');
+  }
 
   const categoriesRaw = (fullRow.categories ?? []).map((rel: any) => rel.mood_categories as DbMoodCategory);
   return mapMoodEntry({ ...fullRow, categories: categoriesRaw });
