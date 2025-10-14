@@ -214,6 +214,7 @@ export default function ForgotPasswordScreen() {
                       if (message) setMessage(null);
                     }}
                     secureTextEntry
+                    showPasswordToggle
                     placeholder="••••••••"
                     label="Mot de passe"
                   />
@@ -225,6 +226,7 @@ export default function ForgotPasswordScreen() {
                       if (message) setMessage(null);
                     }}
                     secureTextEntry
+                    showPasswordToggle
                     placeholder="••••••••"
                     label="Confirme le mot de passe"
                   />
@@ -255,6 +257,7 @@ export default function ForgotPasswordScreen() {
                       if (message) setMessage(null);
                     }}
                     secureTextEntry
+                    showPasswordToggle
                     placeholder="••••••••"
                     label="Mot de passe"
                   />
@@ -266,6 +269,7 @@ export default function ForgotPasswordScreen() {
                       if (message) setMessage(null);
                     }}
                     secureTextEntry
+                    showPasswordToggle
                     placeholder="••••••••"
                     label="Confirme le mot de passe"
                   />

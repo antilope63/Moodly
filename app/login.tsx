@@ -150,6 +150,7 @@ export default function LoginScreen() {
                 placeholder="••••••••"
                 secureTextEntry
                 label="Password"
+                showPasswordToggle
               />
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
