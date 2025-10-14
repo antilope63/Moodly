@@ -1,27 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
-
-export interface MoodHistoryEntry {
-  id: number;
-  mood_value: number;
-  mood_label: string;
-  reason_summary: string | null;
-  logged_at: string;
-}
+import type { MoodEntry } from '@/types/mood'; // On utilise le type MoodEntry complet
 
 export const useMoodHistory = () => {
   const { user } = useAuth();
-  const [items, setItems] = useState<MoodHistoryEntry[]>([]);
+  const [items, setItems] = useState<MoodEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchHistory = useCallback(async () => {
-    // --- LA CORRECTION EST ICI ---
-    // On vérifie non seulement que `user` existe, mais aussi qu'il a un `id`.
-    // Cela empêche la requête de se lancer avec un utilisateur temporaire.
-    if (!user || !user.id) {
-      setIsLoading(false); // On arrête le chargement si pas d'utilisateur
+    if (!user?.id) {
+      setIsLoading(false);
       return;
     }
 
@@ -29,17 +19,39 @@ export const useMoodHistory = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('mood_entries')
-        .select('id, mood_value, mood_label, reason_summary, logged_at')
+        .select('*, categories:mood_entry_categories(mood_categories(*))')
         .eq('user_id', user.id)
         .order('logged_at', { ascending: false });
 
-      if (error) {
-        throw error;
+      if (fetchError) {
+        throw fetchError;
       }
 
-      setItems(data || []);
+      // On utilise la même logique de mapping que pour le feed
+      const mappedData = (data || []).map((row: any) => {
+        const categoriesRaw = (row.categories ?? []).map((rel: any) => rel.mood_categories);
+        return {
+          id: row.id,
+          moodValue: row.mood_value,
+          moodLabel: row.mood_label,
+          context: row.context,
+          isAnonymous: row.is_anonymous,
+          reasonSummary: row.reason_summary ?? undefined,
+          note: row.note ?? undefined,
+          loggedAt: row.logged_at,
+          visibility: row.visibility,
+          categories: (categoriesRaw ?? []).map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              categoryType: c.category_type,
+          })),
+        } as MoodEntry
+      });
+
+      setItems(mappedData);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -51,5 +63,8 @@ export const useMoodHistory = () => {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { items, isLoading, error, refresh: fetchHistory };
+  return useMemo(
+    () => ({ items, isLoading, error, refresh: fetchHistory }),
+    [items, isLoading, error, fetchHistory]
+  );
 };

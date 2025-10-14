@@ -27,8 +27,7 @@ export const loginWithCredentials = async (
   const role = resolveRoleTypeFromMetadata((user.user_metadata as any)?.role);
 
   const basicUser: BasicUser = {
-    // Supabase utilise des UUID string; nous convertissons en number placeholder 0
-    id: 0,
+    id: user.id, // CORRIGÉ : On utilise le vrai ID string de Supabase
     username: user.email?.split('@')[0] ?? 'user',
     email: user.email ?? undefined,
     role,

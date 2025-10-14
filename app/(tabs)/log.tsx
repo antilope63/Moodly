@@ -22,6 +22,7 @@ import { Colors } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { createMoodEntry } from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
+import { useAuth } from "@/providers/auth-provider"; // Importer useAuth
 
 const DEFAULT_VISIBILITY: VisibilitySettings = {
   shareMoodWithAll: true,
@@ -32,6 +33,7 @@ const DEFAULT_VISIBILITY: VisibilitySettings = {
 };
 
 export default function LogMoodScreen() {
+  const { user } = useAuth(); // Récupérer l'utilisateur
   const [moodValue, setMoodValue] = useState(4);
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -47,6 +49,10 @@ export default function LogMoodScreen() {
   const moodOption = getMoodOptionByValue(moodValue);
 
   const handleSubmit = async () => {
+    if (!user) {
+      Alert.alert("Oups", "Vous n'êtes pas connecté.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       await createMoodEntry({
@@ -59,6 +65,7 @@ export default function LogMoodScreen() {
         loggedAt: new Date().toISOString(),
         categories: selectedCategories,
         visibility,
+        userId: user.id, // On envoie l'ID
       });
       Alert.alert(
         "Humeur enregistrée",

@@ -106,10 +106,11 @@ export type CreateMoodEntryPayload = {
   loggedAt?: string;
   categories: number[];
   visibility: VisibilitySettings;
+  userId: string;
 };
 
 export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<MoodEntry> => {
-  const { categories, ...rest } = payload;
+  const { categories, userId, ...rest } = payload;
 
   const insertPayload = {
     mood_value: rest.moodValue,
@@ -120,12 +121,12 @@ export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<
     note: rest.note ?? null,
     logged_at: rest.loggedAt ?? new Date().toISOString(),
     visibility: rest.visibility,
+    user_id: userId,
   };
 
   const { data, error } = await supabase.from('mood_entries').insert(insertPayload).select('*').single();
   if (error || !data) throw new Error(error?.message ?? 'Unable to create mood entry.');
 
-  // Insert relations into junction table if provided
   if (categories && categories.length > 0) {
     const junctionRows = categories.map((categoryId) => ({
       mood_entry_id: data.id,
@@ -135,7 +136,6 @@ export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<
     if (relError) throw new Error(relError.message);
   }
 
-  // Re-fetch with categories for mapping consistency
   const { data: fullRow, error: fetchError } = await supabase
     .from('mood_entries')
     .select(

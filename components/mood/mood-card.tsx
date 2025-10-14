@@ -29,18 +29,18 @@ export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; h
         <Text style={styles.emoji}>{option.emoji}</Text>
         <View style={styles.headerText}>
           <Text style={styles.moodLabel}>{option.title}</Text>
+          {/* CORRECTION : L'ensemble du texte est regroupé dans une seule expression */}
           <Text style={styles.moodMeta}>
-            {mood.context === 'professional' ? 'Pro' : mood.context === 'personal' ? 'Perso' : 'Mixte'} •{' '}
-            {formatDate(mood.loggedAt)}
+            {`${mood.context === 'professional' ? 'Pro' : mood.context === 'personal' ? 'Perso' : 'Mixte'} • ${formatDate(mood.loggedAt)}`}
           </Text>
         </View>
         <Badge label={mood.isAnonymous ? 'Anonyme' : 'Identifié'} tone={mood.isAnonymous ? 'warning' : 'success'} />
       </View>
 
       <View style={styles.content}>
+        {/* CORRECTION : Regroupement pour plus de clarté et de sécurité */}
         <Text style={styles.author}>
-          {mood.isAnonymous || !mood.loggedBy ? 'Un collègue' : mood.loggedBy.username}
-          {mood.team ? ` • ${mood.team.name}` : ''}
+          {`${mood.isAnonymous || !mood.loggedBy ? 'Un collègue' : mood.loggedBy.username}${mood.team ? ` • ${mood.team.name}` : ''}`}
         </Text>
         {highlightReason && mood.reasonSummary ? (
           <Text style={styles.reason}>{mood.reasonSummary}</Text>
