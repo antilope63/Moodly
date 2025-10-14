@@ -1,47 +1,108 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import Button from "@/components/button";
+import Input from "@/components/input";
+import { useAuth } from "@/providers/auth-provider";
+import { loginWithCredentials } from "@/services/auth";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react-native";
 import {
-  ActivityIndicator,
+  Animated,
+  Easing,
+  ImageBackground,
+  Keyboard,
+  Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
-  TextInput,
   View,
-} from 'react-native';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from '@/constants/theme';
-import { useAuth } from '@/providers/auth-provider';
-import { loginWithCredentials } from '@/services/auth';
+const backgroundImage = require("../public/PastelBackground.png");
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const sheetTranslate = useRef(new Animated.Value(0)).current;
+  const sheetOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const handleShow = (event: KeyboardEvent) => {
+      const height = event?.endCoordinates?.height ?? 0;
+      const gap = Platform.OS === "ios" ? 24 : 16;
+      const offset = -Math.max(0, height - gap - 120);
+      Animated.timing(sheetTranslate, {
+        toValue: offset,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(sheetOpacity, {
+        toValue: 0.98,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handleHide = () => {
+      Animated.parallel([
+        Animated.timing(sheetTranslate, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, handleShow);
+    const hideSub = Keyboard.addListener(hideEvent, handleHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [sheetOpacity, sheetTranslate]);
 
   const handleSubmit = async () => {
     if (!identifier.trim() || !password.trim()) {
-      setError('Renseigne ton email et ton mot de passe.');
+      setError("Renseigne ton email et ton mot de passe.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const { user, token } = await loginWithCredentials(identifier.trim(), password);
+      const { user, token } = await loginWithCredentials(
+        identifier.trim(),
+        password
+      );
       login(user, token);
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     } catch (err) {
       const message = err instanceof Error ? err.message : null;
-      if (message && message.toLowerCase().includes('identifier')) {
-        setError('Identifiants ou mot de passe incorrects.');
+      if (message && message.toLowerCase().includes("identifier")) {
+        setError("Identifiants ou mot de passe incorrects.");
       } else if (message) {
         setError(message);
       } else {
-        setError('Impossible de te connecter pour le moment.');
+        setError("Impossible de te connecter pour le moment.");
       }
     } finally {
       setIsLoading(false);
@@ -49,111 +110,172 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.intro}>
-        <Text style={styles.title}>Moodly</Text>
-        <Text style={styles.subtitle}>
-          Log ton humeur, partage le contexte et aide ton équipe à agir rapidement.
-        </Text>
-      </View>
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.background}
+      imageStyle={styles.backgroundImage}
+    >
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <View style={styles.content}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              {
+                opacity: sheetOpacity,
+                transform: [{ translateY: sheetTranslate }],
+              },
+            ]}
+          >
+            <Text style={styles.heading}>Moodly</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Email ou identifiant</Text>
-        <TextInput
-          value={identifier}
-          onChangeText={(value) => {
-            setIdentifier(value);
-            if (error) setError(null);
-          }}
-          placeholder="camille@moodly.co"
-          placeholderTextColor="#9BA1A6"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoCorrect={false}
-          style={styles.input}
-        />
-        <Text style={styles.label}>Mot de passe</Text>
-        <TextInput
-          value={password}
-          onChangeText={(value) => {
-            setPassword(value);
-            if (error) setError(null);
-          }}
-          placeholder="••••••••"
-          placeholderTextColor="#9BA1A6"
-          secureTextEntry
-          style={styles.input}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+            <View style={styles.form}>
+              <Input
+                value={identifier}
+                onChangeText={(value) => {
+                  setIdentifier(value);
+                  if (error) setError(null);
+                }}
+                placeholder="kristin.watson@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                label="Email"
+              />
 
-        <Pressable
-          style={[styles.submit, isLoading && styles.submitDisabled]}
-          onPress={handleSubmit}
-          disabled={isLoading}>
-          {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Accéder à Moodly</Text>}
-        </Pressable>
-      </View>
-    </SafeAreaView>
+              <Input
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (error) setError(null);
+                }}
+                placeholder="Passe123*"
+                secureTextEntry
+                label="Mot de passe"
+                showPasswordToggle
+              />
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              <View style={styles.row}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: rememberMe }}
+                  onPress={() => setRememberMe((prev) => !prev)}
+                  style={[
+                    styles.checkbox,
+                    rememberMe && styles.checkboxChecked,
+                  ]}
+                >
+                  {rememberMe ? (
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  ) : null}
+                </Pressable>
+                <Text style={styles.rememberLabel}>Se souvenir de moi</Text>
+
+                <Pressable
+                  accessibilityRole="link"
+                  style={styles.linkPressable}
+                  onPress={() => router.push("/forgot-password")}
+                >
+                  <Text style={styles.linkText}>Mot de passe oublié ?</Text>
+                </Pressable>
+              </View>
+
+              <Button
+                title="Se connecter"
+                onPress={handleSubmit}
+                loading={isLoading}
+              />
+            </View>
+          </Animated.View>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    backgroundColor: '#0F172A',
+  },
+  backgroundImage: {
+    resizeMode: "cover",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#FFFFFF",
+    height: 550,
+    paddingTop: 32,
     paddingHorizontal: 24,
-    paddingVertical: 32,
-    gap: 24,
-  },
-  intro: {
-    gap: 12,
-  },
-  title: {
-    color: '#F8FAFC',
-    fontSize: 42,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#CBD5F5',
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  card: {
-    backgroundColor: '#1E293B',
-    padding: 20,
-    borderRadius: 24,
+    paddingBottom: 36,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    shadowColor: "#1c1d3d",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+    width: "100%",
     gap: 16,
   },
-  label: {
-    color: '#E2E8F0',
-    fontSize: 16,
-    fontWeight: '600',
+  heading: {
+    color: "#1F3C88",
+    fontSize: 36,
+    fontWeight: "700",
+    textAlign: "center",
   },
-  input: {
-    backgroundColor: '#0F172A',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#F8FAFC',
-    fontSize: 16,
+  form: {
+    gap: 18,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
   },
   error: {
-    color: Colors.light.tint,
+    color: "#ef4444",
     fontSize: 14,
   },
-  submit: {
-    marginTop: 12,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 16,
-    alignItems: 'center',
-    paddingVertical: 14,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#A5B4FC",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
-  submitDisabled: {
-    opacity: 0.7,
+  checkboxChecked: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
   },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: "#FFFFFF",
+  },
+  rememberLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#475467",
+  },
+  linkPressable: {
+    padding: 4,
+  },
+  linkText: {
+    color: "#2563EB",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
