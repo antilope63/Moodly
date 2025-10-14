@@ -46,7 +46,7 @@ export default function ForgotPasswordScreen() {
     const handleShow = (event: KeyboardEvent) => {
       const height = event?.endCoordinates?.height ?? 0;
       const gap = Platform.OS === "ios" ? 24 : 16;
-      const offset = -Math.max(0, height - gap - 120);
+      const offset = -Math.max(0, height - gap - 60);
       Animated.timing(sheetTranslate, {
         toValue: offset,
         duration: 260,
