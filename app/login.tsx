@@ -3,15 +3,20 @@ import Input from "@/components/input";
 import { useAuth } from "@/providers/auth-provider";
 import { loginWithCredentials } from "@/services/auth";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ImageBackground,
+  Animated,
+  Easing,
+  Keyboard,
+  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import type { KeyboardEvent } from "react-native";
 
 const backgroundImage = require("../public/PastelBackground.png");
 
@@ -23,6 +28,54 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const sheetTranslate = useRef(new Animated.Value(0)).current;
+  const sheetOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const handleShow = (event: KeyboardEvent) => {
+      const height = event?.endCoordinates?.height ?? 0;
+      const gap = Platform.OS === "ios" ? 24 : 16;
+      const offset = -Math.max(0, height - gap - 120);
+      Animated.timing(sheetTranslate, {
+        toValue: offset,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(sheetOpacity, {
+        toValue: 0.98,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handleHide = () => {
+      Animated.parallel([
+        Animated.timing(sheetTranslate, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, handleShow);
+    const hideSub = Keyboard.addListener(hideEvent, handleHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [sheetOpacity, sheetTranslate]);
 
   const handleSubmit = async () => {
     if (!identifier.trim() || !password.trim()) {
@@ -54,25 +107,22 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.wrapper}>
-        <ImageBackground
-          source={backgroundImage}
-          style={styles.headerBackground}
-          imageStyle={styles.headerImage}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={() => router.back()}
-            style={styles.backButton}
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.background}
+      imageStyle={styles.backgroundImage}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              {
+                opacity: sheetOpacity,
+                transform: [{ translateY: sheetTranslate }],
+              },
+            ]}
           >
-            <Text style={styles.backText}>{"<"} Back</Text>
-          </Pressable>
-        </ImageBackground>
-
-        <View style={styles.cardContainer}>
-          <View style={styles.card}>
             <Text style={styles.heading}>Moodly</Text>
 
             <View style={styles.form}>
@@ -127,73 +177,53 @@ export default function LoginScreen() {
                 loading={isLoading}
               />
             </View>
-          </View>
+          </Animated.View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#E6EEFF",
-  },
-  wrapper: {
+  background: {
     flex: 1,
   },
-  headerBackground: {
-    height: 280,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    justifyContent: "flex-start",
-  },
-  headerImage: {
+  backgroundImage: {
     resizeMode: "cover",
   },
-  backButton: {
-    alignSelf: "flex-start",
-    backgroundColor: "#1E3A8A",
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    shadowColor: "#0f1f4b",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  backText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cardContainer: {
+  safeArea: {
     flex: 1,
-    marginTop: -140,
-    paddingHorizontal: 24,
+    backgroundColor: "transparent",
   },
-  card: {
+  content: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  sheet: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 32,
-    paddingVertical: 32,
+    height: 550,
+    paddingTop: 32,
     paddingHorizontal: 24,
-    shadowColor: "#1e1f3d",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.12,
-    shadowRadius: 32,
+    paddingBottom: 36,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    shadowColor: "#1c1d3d",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 6,
-    alignItems: "stretch",
-    gap: 12,
+    width: "100%",
+    gap: 16,
   },
   heading: {
     color: "#1F3C88",
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: "700",
     textAlign: "center",
   },
   form: {
-    marginTop: 8,
     gap: 18,
   },
   row: {
