@@ -21,6 +21,7 @@ const MAPPING = {
   'square.and.pencil': 'edit',
   'clock.fill': 'schedule',
   'person.3.fill': 'groups',
+    'rectangle.portrait.and.arrow.right': 'logout',
 } as IconMapping;
 
 /**
