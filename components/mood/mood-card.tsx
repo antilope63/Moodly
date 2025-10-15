@@ -1,9 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { getMoodOptionByValue } from '@/constants/mood';
+import { Palette } from '@/constants/theme';
 import type { MoodEntry, VisibilitySettings } from '@/types/mood';
-import { Badge } from '@/components/ui/badge';
-import { Chip } from '@/components/ui/chip';
 
 const formatVisibility = (visibility: VisibilitySettings, isAnonymous: boolean) => {
   if (isAnonymous) return 'Anonyme';
@@ -14,7 +13,12 @@ const formatVisibility = (visibility: VisibilitySettings, isAnonymous: boolean) 
 
 const formatDate = (date: string) => {
   try {
-    return new Date(date).toLocaleString();
+    return new Date(date).toLocaleString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return date;
   }
@@ -22,48 +26,58 @@ const formatDate = (date: string) => {
 
 export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; highlightReason?: boolean }) => {
   const option = getMoodOptionByValue(mood.moodValue);
+  const accentColor =
+    {
+      1: '#FFADA6',
+      2: '#F5ABC3',
+      3: '#F2F5A9',
+      4: '#DDCFF8',
+      5: '#B8FFCE',
+    }[mood.moodValue] ?? option.color;
+  const contextLabel = (
+    mood.context === 'professional'
+      ? 'Travail'
+      : mood.context === 'personal'
+      ? 'Personnel'
+      : 'Mixte'
+  );
+  const authorName = mood.isAnonymous || !mood.loggedBy ? 'Un collègue' : mood.loggedBy.username;
+  const teamLabel = mood.team?.name ? `Équipe ${mood.team.name}` : null;
+  const primaryMessage =
+    (highlightReason && mood.reasonSummary) || mood.note || mood.reasonSummary || null;
 
   return (
     <View style={styles.card}>
-      <View style={[styles.header, { backgroundColor: option.color }]}>
-        <Text style={styles.emoji}>{option.emoji}</Text>
-        <View style={styles.headerText}>
-          <Text style={styles.moodLabel}>{option.title}</Text>
-          <Text style={styles.moodMeta}>
-            {mood.context === 'professional' ? 'Pro' : mood.context === 'personal' ? 'Perso' : 'Mixte'} •{' '}
-            {formatDate(mood.loggedAt)}
-          </Text>
-        </View>
-        <Badge label={mood.isAnonymous ? 'Anonyme' : 'Identifié'} tone={mood.isAnonymous ? 'warning' : 'success'} />
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.author}>
-          {mood.isAnonymous || !mood.loggedBy ? 'Un collègue' : mood.loggedBy.username}
-          {mood.team ? ` • ${mood.team.name}` : ''}
-        </Text>
-        {highlightReason && mood.reasonSummary ? (
-          <Text style={styles.reason}>{mood.reasonSummary}</Text>
-        ) : null}
-        {mood.note ? <Text style={styles.note}>{mood.note}</Text> : null}
-
-        {mood.categories?.length ? (
-          <View style={styles.categories}>
-            {mood.categories.map((category) => (
-              <Chip key={category.id} label={category.name} />
-            ))}
+      <View style={[styles.sideAccent, { backgroundColor: accentColor }]} />
+      <View style={styles.innerCard}>
+        <View style={styles.headerRow}>
+          <Text style={styles.author}>{authorName}</Text>
+          <View style={styles.badgesRow}>
+            <View style={[styles.badge, styles.contextBadge]}>
+              <Text style={styles.badgeText}>{contextLabel}</Text>
+            </View>
+            {teamLabel ? (
+              <View style={[styles.badge, styles.teamBadge]}>
+                <Text style={styles.badgeText}>{teamLabel}</Text>
+              </View>
+            ) : null}
           </View>
-        ) : null}
-      </View>
+        </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.visibility}>{formatVisibility(mood.visibility, mood.isAnonymous)}</Text>
-        {mood.additionalViewers?.length ? (
-          <Text style={styles.visibility}>
-            Partagé avec {mood.additionalViewers.length}{' '}
-            {mood.additionalViewers.length > 1 ? 'collaborateurs' : 'collaborateur'} ciblé(s).
-          </Text>
-        ) : null}
+        <View style={styles.bodyRow}>
+          <View style={styles.emojiSurface}>
+            <Text style={styles.emoji}>{option.emoji}</Text>
+          </View>
+          <View style={styles.messageColumn}>
+            <Text style={styles.title}>{option.title}</Text>
+            {primaryMessage ? <Text style={styles.note}>{primaryMessage}</Text> : null}
+            <Text style={styles.timestamp}>{formatDate(mood.loggedAt)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.footerRow}>
+          <Text style={styles.visibility}>{formatVisibility(mood.visibility, mood.isAnonymous)}</Text>
+        </View>
       </View>
     </View>
   );
@@ -72,74 +86,104 @@ export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; h
 const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    backgroundColor: 'transparent',
     marginHorizontal: 4,
-  },
-  header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 18,
     gap: 12,
   },
-  emoji: {
-    fontSize: 32,
+  sideAccent: {
+    width: 10,
+    borderRadius: 10,
+    marginVertical: 12,
   },
-  headerText: {
+  innerCard: {
     flex: 1,
-    gap: 4,
+    backgroundColor: Palette.whiteBackground,
+    borderRadius: 24,
+    padding: 20,
+    gap: 16,
+    shadowColor: Palette.bleuPastel,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  moodLabel: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  moodMeta: {
-    color: '#EEF2FF',
-    fontSize: 13,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    gap: 8,
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   author: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '700',
+    color: Palette.textPrimary,
   },
-  reason: {
-    fontSize: 16,
-    color: '#0F172A',
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  badgeText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: Palette.textPrimary,
+  },
+  contextBadge: {
+    backgroundColor: '#FEC6C6',
+  },
+  teamBadge: {
+    backgroundColor: '#C9C3FF',
+  },
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  emojiSurface: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00000022',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  emoji: {
+    fontSize: 30,
+  },
+  messageColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Palette.textPrimary,
   },
   note: {
-    color: '#475569',
+    color: Palette.textPrimary,
     fontSize: 14,
     lineHeight: 20,
   },
-  categories: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
+  timestamp: {
+    fontSize: 12,
+    color: '#8A8CA5',
   },
-  footer: {
+  footerRow: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 4,
-    backgroundColor: '#F8FAFC',
+    borderTopColor: '#E2E4F3',
+    paddingTop: 12,
   },
   visibility: {
-    color: '#475569',
+    color: '#8A8CA5',
     fontSize: 12,
   },
 });

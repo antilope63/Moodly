@@ -10,6 +10,7 @@ import {
 
 import { MoodCard } from '@/components/mood/mood-card';
 import { useMoodHistory } from '@/hooks/use-mood-history';
+import { Palette } from '@/constants/theme';
 
 const formatDate = (date: string) => {
   try {
@@ -113,7 +114,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Palette.whiteBackground,
   },
   content: {
     paddingHorizontal: 20,
@@ -127,10 +128,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   subtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 14,
   },
   summaryRow: {
@@ -139,31 +140,31 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     borderRadius: 20,
     padding: 18,
     gap: 6,
-    shadowColor: '#0F172A',
+    shadowColor: Palette.bleuPastel,
     shadowOpacity: 0.04,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
   primarySummary: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: Palette.mauvePastel,
   },
   summaryLabel: {
-    color: '#1E3A8A',
+    color: Palette.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   summaryValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   summaryHint: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   dayCard: {
@@ -172,26 +173,28 @@ const styles = StyleSheet.create({
   dayTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
     textTransform: 'capitalize',
   },
   moodEntry: {
     marginTop: 8,
   },
   empty: {
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
     gap: 8,
+    borderWidth: 1,
+    borderColor: Palette.bleuClairPastel,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   emptySubtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     textAlign: 'center',
   },
   errorBanner: {

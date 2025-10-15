@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
 
+import { Palette } from '@/constants/theme';
+
 type ChipProps = PressableProps & {
   label: string;
   selected?: boolean;
@@ -37,20 +39,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   unselected: {
-    borderColor: '#CBD5F5',
-    backgroundColor: '#F8FAFC',
+    borderColor: Palette.bleuClairPastel,
+    backgroundColor: '#FFFFFF',
   },
   selected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#2563EB',
+    borderColor: Palette.bleuMarin,
+    backgroundColor: Palette.bleuMarin,
   },
   label: {
-    color: '#0F172A',
+    color: Palette.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   selectedText: {
-    color: '#F8FAFC',
+    color: '#FFFFFF',
   },
   emoji: {
     fontSize: 16,
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   groupTitle: {
-    color: '#0F172A',
+    color: Palette.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },

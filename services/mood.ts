@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { MoodCategory, MoodContext, MoodEntry, MoodLabel, VisibilitySettings } from '@/types/mood';
+import type { MoodCategory, MoodContext, MoodEntry, MoodLabel, RoleType, TeamSummary, VisibilitySettings } from '@/types/mood';
 
 type DbMoodCategory = {
   id: number;
@@ -35,7 +35,9 @@ const mapCategory = (row: DbMoodCategory): MoodCategory => ({
   isDefault: row.is_default ?? undefined,
 });
 
-const mapMoodEntry = (row: DbMoodEntry & { categories?: DbMoodCategory[] }): MoodEntry => ({
+const mapMoodEntry = (
+  row: DbMoodEntry & { categories?: DbMoodCategory[]; team?: { id: number; name: string; slug?: string | null } | null }
+): MoodEntry => ({
   id: row.id,
   moodValue: row.mood_value,
   moodLabel: row.mood_label,
@@ -48,18 +50,20 @@ const mapMoodEntry = (row: DbMoodEntry & { categories?: DbMoodCategory[] }): Moo
   categories: (row.categories ?? []).map(mapCategory),
   loggedBy: null,
   additionalViewers: [],
-  team: null,
+  team: row.team
+    ? {
+        id: row.team.id,
+        name: row.team.name,
+        slug: row.team.slug ?? undefined,
+      }
+    : null,
 });
 
-export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
-  const { data, error } = await supabase
-    .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
-    .order('logged_at', { ascending: false })
-    .limit(25);
+const moodEntrySelect =
+  'id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, team:teams(id,name,slug), categories:mood_entry_categories(mood_categories(*))';
 
+export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
+  const { data, error } = await supabase.from('mood_entries').select(moodEntrySelect).order('logged_at', { ascending: false }).limit(25);
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((row: any) => {
@@ -69,14 +73,7 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
-  const { data, error } = await supabase
-    .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
-    .order('logged_at', { ascending: false })
-    .limit(100);
-
+  const { data, error } = await supabase.from('mood_entries').select(moodEntrySelect).order('logged_at', { ascending: false }).limit(100);
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((row: any) => {
@@ -86,11 +83,7 @@ export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
 };
 
 export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
-  const { data, error } = await supabase
-    .from('mood_categories')
-    .select('*')
-    .order('order', { ascending: true });
-
+  const { data, error } = await supabase.from('mood_categories').select('*').order('order', { ascending: true });
   if (error) throw new Error(error.message);
 
   return (data ?? []).map(mapCategory);
@@ -106,12 +99,38 @@ export type CreateMoodEntryPayload = {
   loggedAt?: string;
   categories: number[];
   visibility: VisibilitySettings;
+  teamId?: number | null;
 };
 
 export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<MoodEntry> => {
-  const { categories, ...rest } = payload;
+  const { categories, teamId: explicitTeamId, ...rest } = payload;
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  if (!authData?.user) {
+    throw new Error('Connecte-toi pour partager ton humeur.');
+  }
+
+  let teamId = explicitTeamId ?? null;
+
+  if (!teamId) {
+    const { data: membership, error: membershipError } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', authData.user.id)
+      .limit(1)
+      .maybeSingle();
+    if (membershipError) throw new Error(membershipError.message);
+    teamId = membership?.team_id ?? null;
+  }
+
+  if (!teamId) {
+    throw new Error("Ton compte n'est associé à aucune équipe. Contacte ton manager pour rejoindre une équipe.");
+  }
 
   const insertPayload = {
+    user_id: authData.user.id,
+    team_id: teamId,
     mood_value: rest.moodValue,
     mood_label: rest.moodLabel,
     context: rest.context,
@@ -122,10 +141,9 @@ export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<
     visibility: rest.visibility,
   };
 
-  const { data, error } = await supabase.from('mood_entries').insert(insertPayload).select('*').single();
-  if (error || !data) throw new Error(error?.message ?? 'Unable to create mood entry.');
+  const { data, error } = await supabase.from('mood_entries').insert(insertPayload).select('id').single();
+  if (error || !data) throw new Error(error?.message ?? 'Impossible de créer ton humeur.');
 
-  // Insert relations into junction table if provided
   if (categories && categories.length > 0) {
     const junctionRows = categories.map((categoryId) => ({
       mood_entry_id: data.id,
@@ -135,17 +153,52 @@ export const createMoodEntry = async (payload: CreateMoodEntryPayload): Promise<
     if (relError) throw new Error(relError.message);
   }
 
-  // Re-fetch with categories for mapping consistency
-  const { data: fullRow, error: fetchError } = await supabase
-    .from('mood_entries')
-    .select(
-      `id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, categories:mood_entry_categories(mood_categories(*))`
-    )
-    .eq('id', data.id)
-    .single();
-
-  if (fetchError || !fullRow) throw new Error(fetchError?.message ?? 'Entry created but not retrievable.');
+  const { data: fullRow, error: fetchError } = await supabase.from('mood_entries').select(moodEntrySelect).eq('id', data.id).single();
+  if (fetchError || !fullRow) throw new Error(fetchError?.message ?? 'Humeur enregistrée mais impossible de la relire.');
 
   const categoriesRaw = (fullRow.categories ?? []).map((rel: any) => rel.mood_categories as DbMoodCategory);
   return mapMoodEntry({ ...fullRow, categories: categoriesRaw });
+};
+
+export type ProfileSummary = {
+  role?: RoleType | null;
+  team?: TeamSummary | null;
+  moodsCount: number;
+};
+
+export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  if (!authData?.user) {
+    throw new Error('Connecte-toi pour afficher ton profil.');
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from('team_members')
+    .select('role, team:teams(id,name,slug)')
+    .eq('user_id', authData.user.id)
+    .limit(1)
+    .maybeSingle();
+  if (membershipError) throw new Error(membershipError.message);
+
+  const { count, error: countError } = await supabase
+    .from('mood_entries')
+    .select('id', { head: true, count: 'exact' })
+    .eq('user_id', authData.user.id);
+  if (countError) throw new Error(countError.message);
+
+  let role: RoleType | null = null;
+  const membershipRole = (membership?.role as string | null) ?? null;
+  if (membershipRole) {
+    const normalized = membershipRole.toLowerCase();
+    if (normalized === 'manager' || normalized === 'hr' || normalized === 'employee') {
+      role = normalized as RoleType;
+    }
+  }
+
+  return {
+    role,
+    team: (membership?.team as TeamSummary | null) ?? null,
+    moodsCount: count ?? 0,
+  };
 };

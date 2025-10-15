@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Palette } from '@/constants/theme';
 import { useAuth } from '@/providers/auth-provider';
 import { loginWithCredentials } from '@/services/auth';
 
@@ -100,7 +100,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: Palette.mauvePastel,
     paddingHorizontal: 24,
     paddingVertical: 32,
     gap: 24,
@@ -109,32 +109,37 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    color: '#F8FAFC',
+    color: Palette.textPrimary,
     fontSize: 42,
     fontWeight: '700',
   },
   subtitle: {
-    color: '#CBD5F5',
+    color: Palette.textSecondary,
     fontSize: 16,
     lineHeight: 22,
   },
   card: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 24,
     gap: 16,
+    shadowColor: Palette.bleuPastel,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   label: {
-    color: '#E2E8F0',
+    color: Palette.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   input: {
-    backgroundColor: '#0F172A',
+    backgroundColor: Palette.bleuClairPastel,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: '#F8FAFC',
+    color: Palette.textPrimary,
     fontSize: 16,
   },
   error: {

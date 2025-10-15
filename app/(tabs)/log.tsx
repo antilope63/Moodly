@@ -12,26 +12,22 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 
 import { CategoryPicker } from "@/components/mood/category-picker";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { MoodContextToggle } from "@/components/mood/context-toggle";
 import { MoodScale } from "@/components/mood/mood-scale";
+import { DEFAULT_VISIBILITY } from "@/components/mood/mood-publisher-card";
 import { VisibilityForm } from "@/components/mood/visibility-form";
 import { getMoodOptionByValue } from "@/constants/mood";
-import { Colors } from "@/constants/theme";
+import { Colors, Palette } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { createMoodEntry } from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
 
-const DEFAULT_VISIBILITY: VisibilitySettings = {
-  shareMoodWithAll: true,
-  showReasonToPeers: "anonymized",
-  showReasonToManagers: "visible",
-  showReasonToHr: "visible",
-  allowCustomRecipients: false,
-};
-
 export default function LogMoodScreen() {
+  const router = useRouter();
   const [moodValue, setMoodValue] = useState(4);
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -62,7 +58,13 @@ export default function LogMoodScreen() {
       });
       Alert.alert(
         "Humeur enregistrée",
-        "Merci, ton humeur est prise en compte pour aujourd’hui."
+        "Merci, ton humeur est prise en compte pour aujourd’hui.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/(tabs)/feed"),
+          },
+        ]
       );
       setSelectedCategories([]);
       setReasonSummary("");
@@ -88,6 +90,9 @@ export default function LogMoodScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityRole="button">
+              <IconSymbol name="chevron.left" color={Palette.textPrimary} size={20} />
+            </Pressable>
             <Text style={styles.title}>Log ton humeur</Text>
             <Text style={styles.subtitle}>
               Choisis ton emoji, explique le contexte et partage avec qui tu
@@ -188,7 +193,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: Palette.whiteBackground,
   },
   content: {
     paddingHorizontal: 20,
@@ -199,21 +204,29 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 8,
   },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Palette.mauvePastel,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#0F172A",
+    color: Palette.textPrimary,
   },
   subtitle: {
-    color: "#475569",
+    color: Palette.textSecondary,
     fontSize: 15,
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Palette.mauvePastel,
     padding: 20,
     borderRadius: 24,
     gap: 16,
-    shadowColor: "#0F172A",
+    shadowColor: Palette.bleuPastel,
     shadowOpacity: 0.04,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -222,10 +235,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#0F172A",
+    color: Palette.textPrimary,
   },
   sectionSubtitle: {
-    color: "#475569",
+    color: Palette.textSecondary,
     fontSize: 13,
   },
   row: {
@@ -235,21 +248,21 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   muted: {
-    color: "#64748B",
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   loading: {
-    color: "#64748B",
+    color: Palette.textSecondary,
     fontSize: 12,
     fontStyle: "italic",
   },
   input: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: Palette.bleuClairPastel,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#0F172A",
+    color: Palette.textPrimary,
   },
   noteTitle: {
     marginTop: 6,
@@ -264,7 +277,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   helperText: {
-    color: "#475569",
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   submitButton: {
