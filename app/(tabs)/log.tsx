@@ -24,10 +24,12 @@ import { Palette } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { createMoodEntry } from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function LogMoodScreen() {
   const router = useRouter();
   const toast = useToastController();
+  const { user } = useAuth();
   const [moodValue, setMoodValue] = useState(4);
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -43,6 +45,12 @@ export default function LogMoodScreen() {
   const moodOption = getMoodOptionByValue(moodValue);
 
   const handleSubmit = useCallback(async () => {
+    if (!user?.id) {
+      toast.show("Oups", {
+        description: "Connecte-toi pour partager ton humeur.",
+      });
+      return;
+    }
     try {
       setIsSubmitting(true);
       await createMoodEntry({
@@ -55,6 +63,7 @@ export default function LogMoodScreen() {
         loggedAt: new Date().toISOString(),
         categories: selectedCategories,
         visibility,
+        userId: user.id,
       });
 
       toast.show("Humeur enregistrée", {
@@ -87,6 +96,7 @@ export default function LogMoodScreen() {
     selectedCategories,
     visibility,
     toast,
+    user?.id,
   ]);
 
   return (
