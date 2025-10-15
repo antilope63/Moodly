@@ -64,17 +64,17 @@ export default function TabLayout() {
           }}
         />
       ) : null}
-      {isSuperAdmin ? (
-        <Tabs.Screen
-          name="admin"
-          options={{
-            title: "Admin",
-            tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="gearshape.2.fill" color={color} />
-            ),
-          }}
-        />
-      ) : null}
+      <Tabs.Screen
+        name="admin"
+        options={{
+          // Masque la route dans la barre d'onglets si non super admin
+          href: isSuperAdmin ? undefined : null,
+          title: "Admin",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="gearshape.2.fill" color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

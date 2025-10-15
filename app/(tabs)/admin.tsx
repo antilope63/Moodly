@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import { useAuth } from "@/providers/auth-provider";
 import { adminFindUsersByEmail, adminUpsertUser } from "@/services/auth";
 
 const roles = ["super_admin", "manager", "hr", "employee"];
@@ -20,6 +21,7 @@ type AdminUser = {
 };
 
 export default function AdminScreen() {
+  const { user } = useAuth();
   const [userId, setUserId] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -89,6 +91,10 @@ export default function AdminScreen() {
     setPassword("");
     setRole(u.app_metadata?.role || "employee");
   };
+
+  if (user?.rawRole !== "super_admin") {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
