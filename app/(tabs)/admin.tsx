@@ -35,6 +35,13 @@ export default function AdminScreen() {
       Alert.alert("Champs manquants", "Email et rôle sont requis.");
       return;
     }
+    if (!userId && !password) {
+      Alert.alert(
+        "Mot de passe requis",
+        "Renseigne un mot de passe pour créer l'utilisateur."
+      );
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -157,9 +164,7 @@ export default function AdminScreen() {
 
         {editing ? null : (
           <>
-            <Text style={styles.label}>
-              Mot de passe (création ou réinit, optionnel)
-            </Text>
+            <Text style={styles.label}>Mot de passe (création - requis)</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
