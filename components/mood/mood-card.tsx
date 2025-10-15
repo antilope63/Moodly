@@ -102,11 +102,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     gap: 16,
-    shadowColor: Palette.bleuPastel,
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    shadowColor: '#00000016',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 1, height: 2 },
+    elevation: 4,
   },
   headerRow: {
     flexDirection: 'row',
@@ -156,12 +156,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  emoji: {
-    fontSize: 30,
-  },
   messageColumn: {
     flex: 1,
     gap: 6,
+  },
+  emoji: {
+    fontSize: 32,
   },
   title: {
     fontSize: 16,

@@ -1,33 +1,33 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Button, Fieldset, Form, Input, Label, Paragraph, YStack, XStack } from "tamagui";
+import { Switch as TamSwitch } from "@tamagui/switch";
+import { useToastController } from "@tamagui/toast";
 
 import { CategoryPicker } from "@/components/mood/category-picker";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { MoodContextToggle } from "@/components/mood/context-toggle";
 import { MoodScale } from "@/components/mood/mood-scale";
 import { DEFAULT_VISIBILITY } from "@/components/mood/mood-publisher-card";
 import { VisibilityForm } from "@/components/mood/visibility-form";
 import { getMoodOptionByValue } from "@/constants/mood";
-import { Colors, Palette } from "@/constants/theme";
+import { Palette } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { createMoodEntry } from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
 
 export default function LogMoodScreen() {
   const router = useRouter();
+  const toast = useToastController();
   const [moodValue, setMoodValue] = useState(4);
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -42,7 +42,7 @@ export default function LogMoodScreen() {
 
   const moodOption = getMoodOptionByValue(moodValue);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       setIsSubmitting(true);
       await createMoodEntry({
@@ -56,28 +56,38 @@ export default function LogMoodScreen() {
         categories: selectedCategories,
         visibility,
       });
-      Alert.alert(
-        "Humeur enregistrée",
-        "Merci, ton humeur est prise en compte pour aujourd’hui.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/(tabs)/feed"),
-          },
-        ]
-      );
+
+      toast.show("Humeur enregistrée", {
+        description: "Ton humeur a été prise en compte pour aujourd’hui.",
+      });
+
       setSelectedCategories([]);
       setReasonSummary("");
       setNote("");
       setIsAnonymous(false);
       setMoodValue(4);
       setVisibility(DEFAULT_VISIBILITY);
+
+      router.replace("/(tabs)/feed");
     } catch (err) {
-      Alert.alert("Oups", (err as Error).message);
+      toast.show("Oups", {
+        description: (err as Error).message,
+      });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    context,
+    isAnonymous,
+    moodOption.label,
+    moodValue,
+    note,
+    reasonSummary,
+    router,
+    selectedCategories,
+    visibility,
+    toast,
+  ]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -87,100 +97,124 @@ export default function LogMoodScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
+          <View style={styles.navRow}>
             <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityRole="button">
-              <IconSymbol name="chevron.left" color={Palette.textPrimary} size={20} />
+              <Text style={styles.backLabel}>←</Text>
             </Pressable>
-            <Text style={styles.title}>Log ton humeur</Text>
-            <Text style={styles.subtitle}>
-              Choisis ton emoji, explique le contexte et partage avec qui tu
-              veux.
-            </Text>
           </View>
+          <Form
+            style={styles.form}
+            onSubmit={() => {
+              if (!isSubmitting) {
+                void handleSubmit();
+              }
+            }}
+          >
+            <YStack gap="$4">
+              <YStack gap="$2">
+                <Text style={styles.title}>Publie ton humeur</Text>
+                <Paragraph size="$2" color="$color10">
+                  Choisis ton emoji, précise le contexte et partage les bonnes infos à ton équipe.
+                </Paragraph>
+              </YStack>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Comment te sens-tu ?</Text>
-            <Text style={styles.sectionSubtitle}>{moodOption.description}</Text>
-            <MoodScale value={moodValue} onChange={setMoodValue} />
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <Label style={styles.fieldLabel}>Comment te sens-tu ?</Label>
+                  <MoodScale value={moodValue} onChange={setMoodValue} />
+                  <Paragraph size="$2" color="$color10">
+                    Ton emoji reste visible pour tout le monde.
+                  </Paragraph>
+                </Fieldset>
+              </View>
 
-          <View style={styles.card}>
-            <MoodContextToggle value={context} onChange={setContext} />
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <Label style={styles.fieldLabel}>Dans quel contexte ?</Label>
+                  <MoodContextToggle value={context} onChange={setContext} />
+                </Fieldset>
+              </View>
 
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.sectionTitle}>
-                Souhaites-tu rester anonyme ?
-              </Text>
-              <Switch value={isAnonymous} onValueChange={setIsAnonymous} />
-            </View>
-            <Text style={styles.muted}>
-              Ton emoji reste visible mais ton nom peut être masqué selon cette
-              option.
-            </Text>
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <XStack alignItems="center" justifyContent="space-between">
+                    <Label style={styles.fieldLabel}>Souhaites-tu rester anonyme ?</Label>
+                    <TamSwitch
+                      size="$3"
+                      checked={isAnonymous}
+                      onCheckedChange={(value) => setIsAnonymous(Boolean(value))}
+                    >
+                      <TamSwitch.Thumb animation="lazy" />
+                    </TamSwitch>
+                  </XStack>
+                  <Paragraph size="$2" color="$color10">
+                    Ton emoji reste visible mais ton nom peut être masqué selon cette option.
+                  </Paragraph>
+                </Fieldset>
+              </View>
 
-          <View style={styles.card}>
-            <CategoryPicker
-              categories={categories}
-              selected={selectedCategories}
-              onChange={setSelectedCategories}
-            />
-            {isLoadingCategories ? (
-              <Text style={styles.loading}>Chargement des catégories...</Text>
-            ) : null}
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <Label style={styles.fieldLabel}>Pourquoi cette humeur ?</Label>
+                  <CategoryPicker
+                    categories={categories}
+                    selected={selectedCategories}
+                    onChange={setSelectedCategories}
+                  />
+                  {isLoadingCategories ? (
+                    <Paragraph size="$2" color="$color10">
+                      Chargement des catégories...
+                    </Paragraph>
+                  ) : null}
+                </Fieldset>
+              </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Un mot sur ta journée</Text>
-            <TextInput
-              style={styles.input}
-              value={reasonSummary}
-              onChangeText={setReasonSummary}
-              placeholder="Sélectionnez un sujet et ajoute une phrase rapide"
-              placeholderTextColor="#94A3B8"
-            />
-            <Text style={styles.muted}>
-              Plus tu es précis, plus on pourra t’accompagner avec les bons
-              leviers.
-            </Text>
-            <Text style={[styles.sectionTitle, styles.noteTitle]}>
-              Tu veux détailler ?
-            </Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={note}
-              onChangeText={setNote}
-              placeholder="Ajoute quelques détails ou un contexte utile..."
-              placeholderTextColor="#94A3B8"
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <Label style={styles.fieldLabel}>Un mot sur ta journée</Label>
+                  <Input
+                    value={reasonSummary}
+                    onChangeText={setReasonSummary}
+                    placeholder="Sélectionne un sujet et ajoute une phrase rapide"
+                    placeholderTextColor="#94A3B8"
+                  />
+                  <Label style={styles.fieldLabel}>Des détails ?</Label>
+                  <Input
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="Ajoute quelques détails ou un contexte utile..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={5}
+                    textAlignVertical="top"
+                    style={styles.textArea}
+                  />
+                </Fieldset>
+              </View>
 
-          <View style={styles.card}>
-            <VisibilityForm value={visibility} onChange={setVisibility} />
-          </View>
+              <View style={styles.card}>
+                <Fieldset gap="$3">
+                  <Label style={styles.fieldLabel}>Visibilité</Label>
+                  <VisibilityForm value={visibility} onChange={setVisibility} />
+                </Fieldset>
+              </View>
+            </YStack>
 
-          <View style={styles.actions}>
-            <Text style={styles.helperText}>
-              Tu peux modifier ton humeur plus tard dans la journée si besoin.
-            </Text>
-            <Pressable
-              style={[
-                styles.submitButton,
-                isSubmitting && styles.submitDisabled,
-              ]}
-              onPress={isSubmitting ? undefined : handleSubmit}
-            >
-              <Text style={styles.submitText}>
+            <Form.Trigger asChild>
+              <Button
+                theme="accent"
+                size="$5"
+                borderRadius="$8"
+                alignSelf="stretch"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? "Enregistrement..." : "Publier mon humeur"}
-              </Text>
-            </Pressable>
-          </View>
+              </Button>
+            </Form.Trigger>
+          </Form>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -198,11 +232,11 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingBottom: 40,
-    gap: 16,
+    gap: 20,
   },
-  header: {
-    gap: 10,
-    marginTop: 8,
+  form: {},
+  navRow: {
+    marginBottom: 16,
   },
   backButton: {
     width: 36,
@@ -212,86 +246,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  backLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Palette.textPrimary,
+  },
   title: {
     fontSize: 28,
     fontWeight: "700",
     color: Palette.textPrimary,
   },
-  subtitle: {
-    color: Palette.textSecondary,
-    fontSize: 15,
-  },
   card: {
-    backgroundColor: Palette.mauvePastel,
+    backgroundColor: '#F5F3FF',
     padding: 20,
     borderRadius: 24,
     gap: 16,
-    shadowColor: Palette.bleuPastel,
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E1FF',
+    shadowColor: '#00000011',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
-  sectionTitle: {
+  fieldLabel: {
     fontSize: 16,
     fontWeight: "700",
     color: Palette.textPrimary,
-  },
-  sectionSubtitle: {
-    color: Palette.textSecondary,
-    fontSize: 13,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  muted: {
-    color: Palette.textSecondary,
-    fontSize: 12,
-  },
-  loading: {
-    color: Palette.textSecondary,
-    fontSize: 12,
-    fontStyle: "italic",
-  },
-  input: {
-    backgroundColor: Palette.bleuClairPastel,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: Palette.textPrimary,
-  },
-  noteTitle: {
-    marginTop: 6,
   },
   textArea: {
     minHeight: 120,
-    textAlignVertical: "top",
-  },
-  actions: {
-    gap: 12,
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  helperText: {
-    color: Palette.textSecondary,
-    fontSize: 12,
-  },
-  submitButton: {
-    backgroundColor: Colors.light.tint,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 18,
-  },
-  submitText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  submitDisabled: {
-    opacity: 0.6,
   },
 });

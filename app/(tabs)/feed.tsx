@@ -52,9 +52,8 @@ const ErrorBanner = ({ message }: { message: string }) => (
 );
 
 type MoodFeedItem = ReturnType<typeof useMoodFeed>['moods'][number];
-type MoodEntryData = { kind: 'heading' } | { kind: 'mood'; entry: MoodFeedItem };
 type FeedListProps = {
-  listRef: React.RefObject<FlatList<MoodEntryData>>;
+  listRef: React.RefObject<FlatList<MoodFeedItem>>;
   moods: MoodFeedItem[];
   isLoading: boolean;
   error: Error | null;
@@ -63,8 +62,6 @@ type FeedListProps = {
   onOpenForm: () => void;
   onMoodPublished: () => Promise<void>;
 };
-
-const PINNED_CARD_HEIGHT = 200;
 
 const FeedList = ({
   listRef,
@@ -77,41 +74,33 @@ const FeedList = ({
   onMoodPublished,
 }: FeedListProps) => {
   const highlightId = useMemo(() => moods.at(0)?.id, [moods]);
-  const data = useMemo<MoodEntryData[]>(
-    () => [{ kind: 'heading' as const }, ...moods.map((entry) => ({ kind: 'mood' as const, entry }))],
-    [moods]
-  );
 
   return (
-    <View style={styles.feedWrapper}>
-      <View style={styles.fixedMoodCard}>
-        <MoodPublisherCard greeting={greeting} onPublished={onMoodPublished} onOpenForm={onOpenForm} />
-      </View>
-      <FlatList
-        ref={listRef}
-        data={data}
-        keyExtractor={(item, index) => (item.kind === 'mood' ? String(item.entry.id) : `heading-${index}`)}
-        renderItem={({ item }) =>
-          item.kind === 'heading' ? (
-            <View style={styles.feedHeader}>
-              <Text style={styles.feedTitle}>Mood des collègues</Text>
-              <Text style={styles.feedSubtitle}>Dernières humeurs partagées</Text>
-              {error ? <ErrorBanner message={error.message} /> : null}
-              {!isLoading && !error && moods.length === 0 ? <EmptyPlaceholder /> : null}
-            </View>
-          ) : (
-            <MoodCard
-              mood={item.entry}
-              highlightReason={item.entry.id === highlightId && Boolean(item.entry.reasonSummary)}
-            />
-          )
-        }
-        contentContainerStyle={[styles.listContent, { paddingTop: PINNED_CARD_HEIGHT + 24 }]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
-    </View>
+    <FlatList
+      ref={listRef}
+      data={moods}
+      keyExtractor={(item) => String(item.id)}
+      renderItem={({ item }) => (
+        <View style={styles.cardWrapper}>
+          <MoodCard mood={item} highlightReason={item.id === highlightId && Boolean(item.reasonSummary)} />
+        </View>
+      )}
+      ListHeaderComponent={
+        <View style={styles.listHeader}>
+          <MoodPublisherCard greeting={greeting} onPublished={onMoodPublished} onOpenForm={onOpenForm} />
+          <View style={styles.feedHeader}>
+            <Text style={styles.feedTitle}>Mood des collègues</Text>
+            <Text style={styles.feedSubtitle}>Dernières humeurs partagées</Text>
+            {error ? <ErrorBanner message={error.message} /> : null}
+          </View>
+        </View>
+      }
+      ListEmptyComponent={!isLoading && !error ? <EmptyPlaceholder /> : null}
+      contentContainerStyle={styles.listContent}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
   );
 };
 
@@ -183,7 +172,7 @@ export default function FeedScreen() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const pagerRef = useRef<ScrollView>(null);
-  const feedListRef = useRef<FlatList<MoodEntryData>>(null);
+  const feedListRef = useRef<FlatList<MoodFeedItem>>(null);
   const profileScrollRef = useRef<ScrollView>(null);
   const { width } = Dimensions.get('window');
   const profileRoleLabel = useMemo(
@@ -327,22 +316,17 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 24,
   },
-  feedWrapper: {
-    flex: 1,
+  listHeader: {
+    gap: 24,
+    marginBottom: 12,
   },
-  fixedMoodCard: {
-    position: 'absolute',
-    top: 16,
-    left: 20,
-    right: 20,
-    zIndex: 10,
-    height: PINNED_CARD_HEIGHT,
-    elevation: 6,
+  cardWrapper: {
+    marginBottom: 12,
   },
   feedHeader: {
-    gap: 4,
-    marginBottom: 16,
+    gap: 6,
   },
   feedTitle: {
     fontSize: 18,
@@ -352,9 +336,6 @@ const styles = StyleSheet.create({
   feedSubtitle: {
     fontSize: 14,
     color: Palette.textSecondary,
-  },
-  separator: {
-    height: 20,
   },
   empty: {
     backgroundColor: Palette.whiteBackground,
