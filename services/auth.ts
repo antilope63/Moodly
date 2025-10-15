@@ -26,13 +26,15 @@ export const loginWithCredentials = async (
     throw new Error("Authentification Supabase invalide.");
   }
 
-  const role = resolveRoleTypeFromMetadata((user.user_metadata as any)?.role);
+  const rawRole = (user.user_metadata as any)?.role ?? null;
+  const role = resolveRoleTypeFromMetadata(rawRole);
 
   const basicUser: BasicUser = {
     id: user.id, // CORRIGÉ : On utilise le vrai ID string de Supabase
     username: user.email?.split('@')[0] ?? 'user',
     email: user.email ?? undefined,
     role,
+    rawRole,
   };
 
   return {
