@@ -30,6 +30,7 @@ export interface BasicUser {
   username: string;
   email?: string;
   role?: RoleType;
+  rawRole?: string | null; // Valeur brute renvoyée par Supabase (développement)
 }
 
 export interface TeamSummary {
