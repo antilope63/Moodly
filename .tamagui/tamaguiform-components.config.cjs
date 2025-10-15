@@ -27,7 +27,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// node_modules/@tamagui/form/dist/esm/index.mjs
+// node_modules/.pnpm/@tamagui+form@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7._55b0eba07a9698dce5f99e5ef3127915/node_modules/@tamagui/form/dist/esm/index.mjs
 var esm_exports = {};
 __export(esm_exports, {
   Form: () => Form2,
@@ -38,10 +38,10 @@ __export(esm_exports, {
 });
 module.exports = __toCommonJS(esm_exports);
 
-// node_modules/@tamagui/form/dist/esm/Form.mjs
+// node_modules/.pnpm/@tamagui+form@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7._55b0eba07a9698dce5f99e5ef3127915/node_modules/@tamagui/form/dist/esm/Form.mjs
 var import_core = require("@tamagui/core");
 
-// node_modules/@tamagui/create-context/dist/esm/create-context.mjs
+// node_modules/.pnpm/@tamagui+create-context@1.135.2_react@19.1.0/node_modules/@tamagui/create-context/dist/esm/create-context.mjs
 var React = __toESM(require("react"), 1);
 var import_jsx_runtime = require("react/jsx-runtime");
 function createContextScope(scopeName, createContextScopeDeps = []) {
@@ -116,7 +116,7 @@ function composeContextScopes(...scopes) {
 }
 __name(composeContextScopes, "composeContextScopes");
 
-// node_modules/@tamagui/helpers/dist/esm/composeEventHandlers.mjs
+// node_modules/.pnpm/@tamagui+helpers@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/helpers/dist/esm/composeEventHandlers.mjs
 function composeEventHandlers(og, next, {
   checkDefaultPrevented = true
 } = {}) {
@@ -127,7 +127,7 @@ function composeEventHandlers(og, next, {
 }
 __name(composeEventHandlers, "composeEventHandlers");
 
-// node_modules/@tamagui/constants/dist/esm/constants.mjs
+// node_modules/.pnpm/@tamagui+constants@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/constants/dist/esm/constants.mjs
 var import_react = require("react");
 var import_react2 = require("react");
 var isWeb = true;
@@ -138,7 +138,7 @@ var isWebTouchable = isClient && ("ontouchstart" in window || navigator.maxTouch
 var isAndroid = false;
 var isIos = process.env.TEST_NATIVE_PLATFORM === "ios";
 
-// node_modules/@tamagui/helpers/dist/esm/validStyleProps.mjs
+// node_modules/.pnpm/@tamagui+helpers@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/helpers/dist/esm/validStyleProps.mjs
 var textColors = {
   color: true,
   textDecorationColor: true,
@@ -442,7 +442,7 @@ var stylePropsText = {
   ...stylePropsTextOnly
 };
 
-// node_modules/@tamagui/helpers/dist/esm/withStaticProperties.mjs
+// node_modules/.pnpm/@tamagui+helpers@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/helpers/dist/esm/withStaticProperties.mjs
 var import_react3 = __toESM(require("react"), 1);
 var Decorated = Symbol();
 var withStaticProperties = /* @__PURE__ */ __name((component, staticProps) => {
@@ -464,7 +464,7 @@ var withStaticProperties = /* @__PURE__ */ __name((component, staticProps) => {
   return Object.assign(next, staticProps), next[Decorated] = true, next;
 }, "withStaticProperties");
 
-// node_modules/@tamagui/form/dist/esm/Form.mjs
+// node_modules/.pnpm/@tamagui+form@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7._55b0eba07a9698dce5f99e5ef3127915/node_modules/@tamagui/form/dist/esm/Form.mjs
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var FORM_NAME = "Form";
 var FormFrame = (0, import_core.styled)(import_core.Stack, {

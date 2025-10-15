@@ -27,7 +27,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// node_modules/@tamagui/button/dist/esm/index.mjs
+// node_modules/.pnpm/@tamagui+button@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_2716b2ec0866dd3c869cfe5e47201107/node_modules/@tamagui/button/dist/esm/index.mjs
 var esm_exports = {};
 __export(esm_exports, {
   Button: () => Button2,
@@ -39,7 +39,7 @@ __export(esm_exports, {
 });
 module.exports = __toCommonJS(esm_exports);
 
-// node_modules/@tamagui/font-size/dist/esm/getFontSize.mjs
+// node_modules/.pnpm/@tamagui+font-size@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+co_2470bc083c859847e6dff8859c6a8417/node_modules/@tamagui/font-size/dist/esm/getFontSize.mjs
 var import_core = require("@tamagui/core");
 var getFontSize = /* @__PURE__ */ __name((inSize, opts) => {
   const res = getFontSizeVariable(inSize, opts);
@@ -61,7 +61,7 @@ var getFontSizeToken = /* @__PURE__ */ __name((inSize, opts) => {
   return sizeTokens[tokenIndex] ?? size;
 }, "getFontSizeToken");
 
-// node_modules/@tamagui/get-token/dist/esm/index.mjs
+// node_modules/.pnpm/@tamagui+get-token@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+co_8e02e61ae062ba37e7eee3ffbba69aa6/node_modules/@tamagui/get-token/dist/esm/index.mjs
 var import_web = require("@tamagui/core");
 var defaultOptions = {
   shift: 0,
@@ -91,7 +91,7 @@ var stepTokenUpOrDown = /* @__PURE__ */ __name((type, current, options = default
 }, "stepTokenUpOrDown");
 var getTokenRelative = stepTokenUpOrDown;
 
-// node_modules/@tamagui/get-button-sized/dist/esm/index.mjs
+// node_modules/.pnpm/@tamagui+get-button-sized@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@b_9b1d4200bc97024d47b87f31edd45c54/node_modules/@tamagui/get-button-sized/dist/esm/index.mjs
 var getButtonSized = /* @__PURE__ */ __name((val, {
   tokens,
   props
@@ -110,7 +110,7 @@ var getButtonSized = /* @__PURE__ */ __name((val, {
   };
 }, "getButtonSized");
 
-// node_modules/@tamagui/constants/dist/esm/constants.mjs
+// node_modules/.pnpm/@tamagui+constants@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/constants/dist/esm/constants.mjs
 var import_react = require("react");
 var import_react2 = require("react");
 var isWeb = true;
@@ -121,7 +121,7 @@ var isWebTouchable = isClient && ("ontouchstart" in window || navigator.maxTouch
 var isAndroid = false;
 var isIos = process.env.TEST_NATIVE_PLATFORM === "ios";
 
-// node_modules/@tamagui/helpers/dist/esm/validStyleProps.mjs
+// node_modules/.pnpm/@tamagui+helpers@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/helpers/dist/esm/validStyleProps.mjs
 var textColors = {
   color: true,
   textDecorationColor: true,
@@ -425,7 +425,7 @@ var stylePropsText = {
   ...stylePropsTextOnly
 };
 
-// node_modules/@tamagui/helpers/dist/esm/withStaticProperties.mjs
+// node_modules/.pnpm/@tamagui+helpers@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/helpers/dist/esm/withStaticProperties.mjs
 var import_react3 = __toESM(require("react"), 1);
 var Decorated = Symbol();
 var withStaticProperties = /* @__PURE__ */ __name((component, staticProps) => {
@@ -447,14 +447,14 @@ var withStaticProperties = /* @__PURE__ */ __name((component, staticProps) => {
   return Object.assign(next, staticProps), next[Decorated] = true, next;
 }, "withStaticProperties");
 
-// node_modules/@tamagui/helpers-tamagui/dist/esm/useCurrentColor.mjs
+// node_modules/.pnpm/@tamagui+helpers-tamagui@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@ba_b12e4ca6a0997e1c49645dfce2088250/node_modules/@tamagui/helpers-tamagui/dist/esm/useCurrentColor.mjs
 var import_web2 = require("@tamagui/core");
 var useCurrentColor = /* @__PURE__ */ __name((colorProp) => {
   const theme = (0, import_web2.useTheme)();
   return colorProp ? (0, import_web2.getVariable)(colorProp) : theme[colorProp]?.get() || theme.color?.get();
 }, "useCurrentColor");
 
-// node_modules/@tamagui/helpers-tamagui/dist/esm/useGetThemedIcon.mjs
+// node_modules/.pnpm/@tamagui+helpers-tamagui@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@ba_b12e4ca6a0997e1c49645dfce2088250/node_modules/@tamagui/helpers-tamagui/dist/esm/useGetThemedIcon.mjs
 var import_react4 = __toESM(require("react"), 1);
 var useGetThemedIcon = /* @__PURE__ */ __name((props) => {
   const color = useCurrentColor(props.color);
@@ -466,10 +466,10 @@ var useGetThemedIcon = /* @__PURE__ */ __name((props) => {
   }) : import_react4.default.createElement(el, props));
 }, "useGetThemedIcon");
 
-// node_modules/@tamagui/stacks/dist/esm/Stacks.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/Stacks.mjs
 var import_core3 = require("@tamagui/core");
 
-// node_modules/@tamagui/stacks/dist/esm/getElevation.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/getElevation.mjs
 var import_core2 = require("@tamagui/core");
 var getElevation = /* @__PURE__ */ __name((size, extras) => {
   if (!size) return;
@@ -502,7 +502,7 @@ var getSizedElevation = /* @__PURE__ */ __name((val, {
   };
 }, "getSizedElevation");
 
-// node_modules/@tamagui/stacks/dist/esm/Stacks.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/Stacks.mjs
 var fullscreenStyle = {
   position: "absolute",
   top: 0,
@@ -544,7 +544,7 @@ var ZStack = (0, import_core3.styled)(YStack, {
 });
 ZStack.displayName = "ZStack";
 
-// node_modules/@tamagui/stacks/dist/esm/variants.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/variants.mjs
 var elevate = {
   true: /* @__PURE__ */ __name((_, extras) => getElevation(extras.props.size, extras), "true")
 };
@@ -643,7 +643,7 @@ var focusTheme = {
   false: {}
 };
 
-// node_modules/@tamagui/stacks/dist/esm/ThemeableStack.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/ThemeableStack.mjs
 var import_core4 = require("@tamagui/core");
 var chromelessStyle = {
   backgroundColor: "transparent",
@@ -686,11 +686,11 @@ var ThemeableStack = (0, import_core4.styled)(YStack, {
   variants: themeableVariants
 });
 
-// node_modules/@tamagui/stacks/dist/esm/NestingContext.mjs
+// node_modules/.pnpm/@tamagui+stacks@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_59740fd11399096748067f9cb5fdec4d/node_modules/@tamagui/stacks/dist/esm/NestingContext.mjs
 var import_react5 = __toESM(require("react"), 1);
 var ButtonNestingContext = import_react5.default.createContext(false);
 
-// node_modules/@tamagui/get-font-sized/dist/esm/index.mjs
+// node_modules/.pnpm/@tamagui+get-font-sized@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@bab_8558dfd338243731ddaf2ccddb87999d/node_modules/@tamagui/get-font-sized/dist/esm/index.mjs
 var import_web3 = require("@tamagui/core");
 var getFontSized = /* @__PURE__ */ __name((sizeTokenIn = "$true", {
   font,
@@ -730,7 +730,7 @@ function getDefaultSizeToken(font) {
 }
 __name(getDefaultSizeToken, "getDefaultSizeToken");
 
-// node_modules/@tamagui/text/dist/esm/SizableText.mjs
+// node_modules/.pnpm/@tamagui+text@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7._54dc85911e199b104b00190ce726636d/node_modules/@tamagui/text/dist/esm/SizableText.mjs
 var import_web4 = require("@tamagui/core");
 var SizableText2 = (0, import_web4.styled)(import_web4.Text, {
   name: "SizableText",
@@ -755,7 +755,7 @@ SizableText2.staticConfig.variants.fontFamily = {
   }, "...")
 };
 
-// node_modules/@tamagui/text/dist/esm/wrapChildrenInText.mjs
+// node_modules/.pnpm/@tamagui+text@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7._54dc85911e199b104b00190ce726636d/node_modules/@tamagui/text/dist/esm/wrapChildrenInText.mjs
 var import_react6 = __toESM(require("react"), 1);
 var import_jsx_runtime = require("react/jsx-runtime");
 function wrapChildrenInText(TextComponent, propsIn, extraProps) {
@@ -788,7 +788,7 @@ function wrapChildrenInText(TextComponent, propsIn, extraProps) {
 }
 __name(wrapChildrenInText, "wrapChildrenInText");
 
-// node_modules/@tamagui/button/dist/esm/Button.mjs
+// node_modules/.pnpm/@tamagui+button@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_2716b2ec0866dd3c869cfe5e47201107/node_modules/@tamagui/button/dist/esm/Button.mjs
 var import_web5 = require("@tamagui/core");
 var import_react7 = require("react");
 var import_jsx_runtime2 = require("react/jsx-runtime");
