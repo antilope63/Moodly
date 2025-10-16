@@ -210,21 +210,19 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: "#FFFFFF",
-    height: 550,
+    minHeight: 520,
     paddingTop: 32,
     paddingHorizontal: 24,
     paddingBottom: 36,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    shadowColor: "#1c1d3d",
+    shadowColor: "#1C1D3D",
     shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 6,
     width: "100%",
-    gap: 16,
+    gap: 18,
   },
   heading: {
     color: "#1F3C88",
@@ -258,12 +256,6 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: "#2563EB",
     borderColor: "#2563EB",
-  },
-  checkboxInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
-    backgroundColor: "#FFFFFF",
   },
   rememberLabel: {
     flex: 1,

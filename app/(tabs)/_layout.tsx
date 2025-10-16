@@ -1,80 +1,13 @@
-import { Tabs } from "expo-router";
+import { Stack } from "expo-router";
 import React from "react";
 
-import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useAuth } from "@/providers/auth-provider";
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const { role, user } = useAuth();
-  const isManagerViewEnabled = role === "manager" || role === "hr";
-  const isSuperAdmin = user?.rawRole === "super_admin";
-
+export default function Layout() {
   return (
-    <Tabs
+    <Stack
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          height: 64,
-        },
+        animation: "fade",
       }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Feed",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="log"
-        options={{
-          title: "Log",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="square.and.pencil" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.fill" color={color} />
-          ),
-        }}
-      />
-      {isManagerViewEnabled ? (
-        <Tabs.Screen
-          name="manager"
-          options={{
-            title: "Manager",
-            tabBarIcon: ({ color }) => (
-              <IconSymbol size={28} name="person.3.fill" color={color} />
-            ),
-          }}
-        />
-      ) : null}
-      <Tabs.Screen
-        name="admin"
-        options={{
-          // Masque la route dans la barre d'onglets si non super admin
-          href: isSuperAdmin ? undefined : null,
-          title: "Admin",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="gearshape.2.fill" color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    />
   );
 }

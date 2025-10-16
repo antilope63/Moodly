@@ -10,6 +10,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { useMoodHistory } from '@/hooks/use-mood-history';
+import { Palette } from '@/constants/theme';
 
 type DailyAverage = {
   date: string;
@@ -161,7 +162,7 @@ export default function ManagerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Palette.whiteBackground,
   },
   content: {
     paddingHorizontal: 20,
@@ -175,10 +176,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   subtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 14,
   },
   summaryRow: {
@@ -187,39 +188,39 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     borderRadius: 20,
     padding: 18,
     gap: 6,
-    shadowColor: '#0F172A',
+    shadowColor: Palette.bleuPastel,
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
   primarySummary: {
-    backgroundColor: '#E0F2FE',
+    backgroundColor: Palette.bleuClairPastel,
   },
   summaryLabel: {
-    color: '#0F172A',
+    color: Palette.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   summaryValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   summaryHint: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   graphCard: {
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     borderRadius: 20,
     padding: 20,
     gap: 16,
-    shadowColor: '#0F172A',
+    shadowColor: Palette.bleuPastel,
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
   graphTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   graphBaseline: {
     flexDirection: 'row',
@@ -243,12 +244,12 @@ const styles = StyleSheet.create({
   graphBar: {
     width: '100%',
     borderRadius: 12,
-    backgroundColor: '#2563EB',
+    backgroundColor: Palette.bleuMarin,
     minHeight: 6,
   },
   graphLabel: {
     fontSize: 11,
-    color: '#64748B',
+    color: Palette.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -258,20 +259,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   sectionHint: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     padding: 16,
     borderRadius: 18,
-    shadowColor: '#0F172A',
+    shadowColor: Palette.bleuPastel,
     shadowOpacity: 0.03,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -283,26 +284,28 @@ const styles = StyleSheet.create({
   personName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   personHint: {
-    color: '#64748B',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
   empty: {
-    backgroundColor: '#fff',
+    backgroundColor: Palette.mauvePastel,
     borderRadius: 18,
     padding: 24,
     alignItems: 'center',
     gap: 6,
+    borderWidth: 1,
+    borderColor: Palette.bleuClairPastel,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   emptySubtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     textAlign: 'center',
   },
   errorBanner: {

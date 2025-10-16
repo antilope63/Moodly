@@ -7,6 +7,7 @@ import React, {
   type PropsWithChildren,
 } from 'react';
 
+import { supabase } from '@/lib/supabase';
 import type { BasicUser, RoleType } from '@/types/mood';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<object>) => {
   }, []);
 
   const logout = useCallback(() => {
+    void supabase.auth.signOut();
     setUser(null);
     setRole(null);
     setToken(null);

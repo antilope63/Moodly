@@ -1,15 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Palette } from '@/constants/theme';
+
 type BadgeProps = {
   label: string;
   tone?: 'default' | 'success' | 'warning' | 'info';
 };
 
 const toneStyles: Record<NonNullable<BadgeProps['tone']>, { backgroundColor: string; color: string }> = {
-  default: { backgroundColor: '#E2E8F0', color: '#0F172A' },
-  success: { backgroundColor: '#DCFCE7', color: '#166534' },
-  warning: { backgroundColor: '#FEF9C3', color: '#92400E' },
-  info: { backgroundColor: '#DBEAFE', color: '#1E3A8A' },
+  default: { backgroundColor: Palette.bleuClairPastel, color: Palette.textPrimary },
+  success: { backgroundColor: Palette.bleuPastel, color: Palette.textPrimary },
+  warning: { backgroundColor: Palette.beigeRose, color: '#7A2F2F' },
+  info: { backgroundColor: Palette.mauvePastel, color: Palette.textPrimary },
 };
 
 export const Badge = ({ label, tone = 'default' }: BadgeProps) => {
