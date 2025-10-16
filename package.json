@@ -27,6 +27,7 @@
     "@tamagui/toast": "^1.135.2",
     "@tunnel/cli": "^0.4.6",
     "burnt": "^0.13.0",
+    "date-fns": "^4.1.0",
     "expo": "~54.0.13",
     "expo-constants": "~18.0.9",
     "expo-font": "~14.0.9",

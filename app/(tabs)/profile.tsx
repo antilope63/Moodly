@@ -6,7 +6,7 @@ import type { MoodEntry } from "@/types/mood";
 import { format, isSameDay, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -192,9 +192,17 @@ const TimelineItem = ({ item }: { item: MoodEntry }) => (
   </View>
 );
 
-export default function HistoryScreen() {
-  const { items, isLoading, error } = useMoodHistory();
-  const { user, role, logout } = useAuth();
+type ProfileDashboardProps = {
+  embedded?: boolean;
+  refreshKey?: number;
+};
+
+export function ProfileDashboard({
+  embedded = false,
+  refreshKey,
+}: ProfileDashboardProps) {
+  const { items, isLoading, error, refresh } = useMoodHistory();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [activePeriod, setActivePeriod] = useState("Semaine");
   const [isHistoryModalVisible, setHistoryModalVisible] = useState(false);
@@ -215,9 +223,21 @@ export default function HistoryScreen() {
     return { averageMood, positiveDays };
   }, [items]);
 
+  useEffect(() => {
+    if (refreshKey && refreshKey > 0) {
+      void refresh();
+    }
+  }, [refreshKey, refresh]);
+
+  const Container = embedded ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.mainContent}>
+    <Container style={embedded ? styles.embeddedSafeArea : styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.mainContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+      >
         {isLoading ? (
           <ActivityIndicator size="large" color={theme.colors.primary} />
         ) : error ? (
@@ -336,12 +356,20 @@ export default function HistoryScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </Container>
   );
+}
+
+export default function ProfileScreen() {
+  return <ProfileDashboard />;
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.colors.backgroundLight },
+  embeddedSafeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+  },
   mainContent: { padding: 16, gap: 16 },
   card: {
     backgroundColor: "white",

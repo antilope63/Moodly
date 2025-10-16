@@ -15,27 +15,14 @@ import { Palette } from '@/constants/theme';
 import { MoodCard } from '@/components/mood/mood-card';
 import { MoodPublisherCard } from '@/components/mood/mood-publisher-card';
 import { useMoodFeed } from '@/hooks/use-mood-feed';
-import { useProfileSummary } from '@/hooks/use-profile-summary';
 import { useAuth } from '@/providers/auth-provider';
 import { useRouter } from 'expo-router';
+import { ProfileDashboard } from './profile';
 
 const sections = [
   { key: 'feed', title: 'Moodboard' },
   { key: 'profile', title: 'Profil' },
 ];
-
-const formatRoleLabel = (role?: string | null) => {
-  switch (role) {
-    case 'manager':
-      return 'Manager';
-    case 'hr':
-      return 'RH';
-    case 'employee':
-      return 'Employé';
-    default:
-      return role ?? undefined;
-  }
-};
 
 const EmptyPlaceholder = () => (
   <View style={styles.empty}>
@@ -104,85 +91,23 @@ const FeedList = ({
   );
 };
 
-const ProfilePanel = ({
-  userName,
-  email,
-  role,
-  teamName,
-  moodCount,
-  isLoadingSummary,
-  summaryError,
-  onLogout,
-  scrollRef,
-}: {
-  userName?: string | null;
-  email?: string | null;
-  role?: string | null;
-  teamName?: string | null;
-  moodCount?: number | null;
-  isLoadingSummary?: boolean;
-  summaryError?: Error | null;
-  onLogout: () => void;
-  scrollRef: React.RefObject<ScrollView>;
-}) => (
-  <ScrollView
-    ref={scrollRef}
-    contentContainerStyle={styles.profileContent}
-    showsVerticalScrollIndicator={false}
-    nestedScrollEnabled
-  >
-    <View style={styles.profileCard}>
-      <Text style={styles.profileLabel}>Profil</Text>
-      <Text style={styles.profileName}>{userName ?? 'Moodlover'}</Text>
-      {email ? <Text style={styles.profileInfo}>{email}</Text> : null}
-      <View style={styles.profileMeta}>
-        <Text style={styles.profileInfo}>Rôle : {role ?? 'Non défini'}</Text>
-        <Text style={styles.profileInfo}>Équipe : {teamName ?? 'Non renseignée'}</Text>
-        <Text style={styles.profileInfo}>
-          Humeurs loguées : {isLoadingSummary ? '—' : moodCount ?? 0}
-        </Text>
-        {summaryError ? (
-          <Text style={styles.profileError}>Profil partiel : {summaryError.message}</Text>
-        ) : null}
-      </View>
-    </View>
-
-    <View style={styles.profileCard}>
-      <Text style={styles.profileLabel}>Statut</Text>
-      <Text style={styles.profileInfo}>
-        Ta dernière humeur sera visible ici une fois publiée. Continue à partager pour alimenter le feed de l’équipe.
-      </Text>
-    </View>
-
-    <Pressable style={styles.logoutButton} onPress={onLogout} accessibilityRole="button">
-      <Text style={styles.logoutLabel}>Se déconnecter</Text>
-    </Pressable>
-  </ScrollView>
-);
-
 export default function FeedScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { moods, isLoading, error, refresh } = useMoodFeed();
-  const {
-    summary,
-    isLoading: isLoadingSummary,
-    error: summaryError,
-    refresh: refreshSummary,
-  } = useProfileSummary();
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const pagerRef = useRef<ScrollView>(null);
   const feedListRef = useRef<FlatList<MoodFeedItem>>(null);
-  const profileScrollRef = useRef<ScrollView>(null);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const { width } = Dimensions.get('window');
-  const profileRoleLabel = useMemo(
-    () => summary?.roleLabel ?? formatRoleLabel(summary?.role ?? user?.role ?? undefined),
-    [summary?.roleLabel, summary?.role, user?.role]
-  );
 
   const handleRefresh = useCallback(async () => {
-    await Promise.all([refresh(), refreshSummary()]);
-  }, [refresh, refreshSummary]);
+    try {
+      await refresh();
+    } finally {
+      setProfileRefreshKey((value) => value + 1);
+    }
+  }, [refresh]);
 
   const handleMoodPublished = useCallback(async () => {
     await handleRefresh();
@@ -196,8 +121,6 @@ export default function FeedScreen() {
     (index: number) => {
       if (index === 0) {
         feedListRef.current?.scrollToOffset({ offset: 0, animated: false });
-      } else {
-        profileScrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
       }
     },
     []
@@ -260,17 +183,7 @@ export default function FeedScreen() {
           />
         </View>
         <View style={[styles.page, { width }]}>
-          <ProfilePanel
-            scrollRef={profileScrollRef}
-            userName={user?.username}
-            email={user?.email}
-            role={profileRoleLabel ?? undefined}
-            teamName={summary?.team?.name ?? null}
-            moodCount={summary?.moodsCount ?? null}
-            isLoadingSummary={isLoadingSummary}
-            summaryError={summaryError}
-            onLogout={logout}
-          />
+          <ProfileDashboard embedded refreshKey={profileRefreshKey} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -370,50 +283,5 @@ const styles = StyleSheet.create({
   errorMessage: {
     color: '#B91C1C',
     fontSize: 13,
-  },
-  profileContent: {
-    padding: 24,
-    gap: 16,
-  },
-  profileCard: {
-    backgroundColor: Palette.mauvePastel,
-    borderRadius: 24,
-    padding: 20,
-    gap: 8,
-  },
-  profileLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Palette.textSecondary,
-    textTransform: 'uppercase',
-  },
-  profileName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Palette.textPrimary,
-  },
-  profileInfo: {
-    color: Palette.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  profileMeta: {
-    gap: 4,
-    marginTop: 8,
-  },
-  profileError: {
-    color: '#D14343',
-    fontSize: 12,
-  },
-  logoutButton: {
-    backgroundColor: '#1C1C1F',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  logoutLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
