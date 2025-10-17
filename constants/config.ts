@@ -1,5 +1,11 @@
-export const STRAPI_URL = process.env.EXPO_PUBLIC_STRAPI_URL ?? 'http://localhost:1337';
+// Supabase
+export const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || '';
 
-export const STRAPI_API_TOKEN = process.env.EXPO_PUBLIC_STRAPI_API_TOKEN ?? '';
+// Dev-only: service role key (NEVER expose in production builds)
+export const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || '';
 
 export const APP_NAME = 'Moodly';

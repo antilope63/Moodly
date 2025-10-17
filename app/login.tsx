@@ -1,173 +1,273 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Button from "@/components/button";
+import Input from "@/components/input";
+import { useAuth } from "@/providers/auth-provider";
+import { loginWithCredentials } from "@/services/auth";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react-native";
+import {
+  Animated,
+  Easing,
+  ImageBackground,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from '@/constants/theme';
-import type { RoleType } from '@/types/mood';
-import { useAuth } from '@/providers/auth-provider';
-
-const ROLE_OPTIONS: { label: string; value: RoleType; description: string }[] = [
-  { label: 'Employé', value: 'employee', description: 'Accès au feed, log et historique.' },
-  { label: 'Manager', value: 'manager', description: 'Vue équipe et suivi 30 jours.' },
-  { label: 'RH', value: 'hr', description: 'Accès global avec anonymisation.' },
-];
+const backgroundImage = require("../public/PastelBackground.png");
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [selectedRole, setSelectedRole] = useState<RoleType>('employee');
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const sheetTranslate = useRef(new Animated.Value(0)).current;
+  const sheetOpacity = useRef(new Animated.Value(1)).current;
 
-  const handleSubmit = () => {
-    if (!username.trim()) {
-      setError('Choisis un prénom pour continuer.');
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const handleShow = (event: KeyboardEvent) => {
+      const height = event?.endCoordinates?.height ?? 0;
+      const gap = Platform.OS === "ios" ? 24 : 16;
+      const offset = -Math.max(0, height - gap - 120);
+      Animated.timing(sheetTranslate, {
+        toValue: offset,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(sheetOpacity, {
+        toValue: 0.98,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handleHide = () => {
+      Animated.parallel([
+        Animated.timing(sheetTranslate, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, handleShow);
+    const hideSub = Keyboard.addListener(hideEvent, handleHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [sheetOpacity, sheetTranslate]);
+
+  const handleSubmit = async () => {
+    if (!identifier.trim() || !password.trim()) {
+      setError("Renseigne ton email et ton mot de passe.");
       return;
     }
 
-    login({
-      id: Date.now(),
-      username: username.trim(),
-      role: selectedRole,
-    });
+    setIsLoading(true);
 
-    router.replace('/(tabs)');
+    try {
+      const { user, token } = await loginWithCredentials(
+        identifier.trim(),
+        password
+      );
+      login(user, token);
+      router.replace("/(tabs)");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : null;
+      if (message && message.toLowerCase().includes("identifier")) {
+        setError("Identifiants ou mot de passe incorrects.");
+      } else if (message) {
+        setError(message);
+      } else {
+        setError("Impossible de te connecter pour le moment.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.intro}>
-        <Text style={styles.title}>Moodly</Text>
-        <Text style={styles.subtitle}>
-          Log ton humeur, partage le contexte et aide ton équipe à agir rapidement.
-        </Text>
-      </View>
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.background}
+      imageStyle={styles.backgroundImage}
+    >
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <View style={styles.content}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              {
+                opacity: sheetOpacity,
+                transform: [{ translateY: sheetTranslate }],
+              },
+            ]}
+          >
+            <Text style={styles.heading}>Moodly</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Ton prénom</Text>
-        <TextInput
-          value={username}
-          onChangeText={(value) => {
-            setUsername(value);
-            if (error) setError(null);
-          }}
-          placeholder="Camille"
-          placeholderTextColor="#9BA1A6"
-          style={styles.input}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+            <View style={styles.form}>
+              <Input
+                value={identifier}
+                onChangeText={(value) => {
+                  setIdentifier(value);
+                  if (error) setError(null);
+                }}
+                placeholder="kristin.watson@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                label="Email"
+              />
 
-        <Text style={[styles.label, styles.roleLabel]}>Ton rôle</Text>
-        <View style={styles.roleRow}>
-          {ROLE_OPTIONS.map((role) => {
-            const isActive = role.value === selectedRole;
-            return (
-              <Pressable
-                key={role.value}
-                style={[styles.roleButton, isActive && styles.roleButtonActive]}
-                onPress={() => setSelectedRole(role.value)}>
-                <Text style={[styles.roleTitle, isActive && styles.roleTitleActive]}>{role.label}</Text>
-                <Text style={[styles.roleDescription, isActive && styles.roleDescriptionActive]}>
-                  {role.description}
-                </Text>
-              </Pressable>
-            );
-          })}
+              <Input
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (error) setError(null);
+                }}
+                placeholder="Passe123*"
+                secureTextEntry
+                label="Mot de passe"
+                showPasswordToggle
+              />
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              <View style={styles.row}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: rememberMe }}
+                  onPress={() => setRememberMe((prev) => !prev)}
+                  style={[
+                    styles.checkbox,
+                    rememberMe && styles.checkboxChecked,
+                  ]}
+                >
+                  {rememberMe ? (
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  ) : null}
+                </Pressable>
+                <Text style={styles.rememberLabel}>Se souvenir de moi</Text>
+
+                <Pressable
+                  accessibilityRole="link"
+                  style={styles.linkPressable}
+                  onPress={() => router.push("/forgot-password")}
+                >
+                  <Text style={styles.linkText}>Mot de passe oublié ?</Text>
+                </Pressable>
+              </View>
+
+              <Button
+                title="Se connecter"
+                onPress={handleSubmit}
+                loading={isLoading}
+              />
+            </View>
+          </Animated.View>
         </View>
-        <Pressable style={styles.submit} onPress={handleSubmit}>
-          <Text style={styles.submitText}>Accéder à Moodly</Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    backgroundColor: '#0F172A',
+  },
+  backgroundImage: {
+    resizeMode: "cover",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#FFFFFF",
+    minHeight: 520,
+    paddingTop: 32,
     paddingHorizontal: 24,
-    paddingVertical: 32,
-    gap: 24,
+    paddingBottom: 36,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    shadowColor: "#1C1D3D",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+    width: "100%",
+    gap: 18,
   },
-  intro: {
-    gap: 12,
+  heading: {
+    color: "#1F3C88",
+    fontSize: 36,
+    fontWeight: "700",
+    textAlign: "center",
   },
-  title: {
-    color: '#F8FAFC',
-    fontSize: 42,
-    fontWeight: '700',
+  form: {
+    gap: 18,
   },
-  subtitle: {
-    color: '#CBD5F5',
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  card: {
-    backgroundColor: '#1E293B',
-    padding: 20,
-    borderRadius: 24,
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 16,
   },
-  label: {
-    color: '#E2E8F0',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  roleLabel: {
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: '#0F172A',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#F8FAFC',
-    fontSize: 16,
-  },
   error: {
-    color: Colors.light.tint,
+    color: "#ef4444",
     fontSize: 14,
   },
-  roleRow: {
-    gap: 12,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#A5B4FC",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
-  roleButton: {
-    backgroundColor: '#0F172A',
-    borderRadius: 18,
-    padding: 16,
-    gap: 6,
+  checkboxChecked: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
   },
-  roleButtonActive: {
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    backgroundColor: '#102542',
-  },
-  roleTitle: {
-    color: '#E2E8F0',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  roleTitleActive: {
-    color: Colors.light.tint,
-  },
-  roleDescription: {
-    color: '#94A3B8',
+  rememberLabel: {
+    flex: 1,
     fontSize: 14,
+    color: "#475467",
   },
-  roleDescriptionActive: {
-    color: '#E2E8F0',
+  linkPressable: {
+    padding: 4,
   },
-  submit: {
-    marginTop: 12,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 16,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  linkText: {
+    color: "#2563EB",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

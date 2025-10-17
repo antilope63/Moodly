@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { MoodCategory } from '@/types/mood';
 import { Chip } from '@/components/ui/chip';
+import { Palette } from '@/constants/theme';
 
 type CategoryPickerProps = {
   categories: MoodCategory[];
@@ -45,12 +46,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    color: '#0F172A',
+    color: Palette.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   subtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 13,
   },
   row: {

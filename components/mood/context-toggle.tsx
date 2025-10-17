@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { MoodContext } from '@/types/mood';
 import { Chip } from '@/components/ui/chip';
+import { Palette } from '@/constants/theme';
 
 type MoodContextToggleProps = {
   value: MoodContext;
@@ -37,12 +38,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    color: '#0F172A',
+    color: Palette.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   subtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 13,
   },
   row: {
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   description: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
 });

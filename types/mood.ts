@@ -26,10 +26,11 @@ export interface MoodCategory {
 }
 
 export interface BasicUser {
-  id: number;
+  id: string; // CORRIGÉ : Doit être un string pour l'UUID de Supabase
   username: string;
   email?: string;
   role?: RoleType;
+  rawRole?: string | null; // Valeur brute renvoyée par Supabase (développement)
 }
 
 export interface TeamSummary {

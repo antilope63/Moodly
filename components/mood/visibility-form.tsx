@@ -3,6 +3,7 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { VisibilityLevel, VisibilitySettings } from '@/types/mood';
 import { Chip } from '@/components/ui/chip';
+import { Palette } from '@/constants/theme';
 
 type VisibilityFormProps = {
   value: VisibilitySettings;
@@ -109,7 +110,7 @@ export const VisibilityForm = ({ value, onChange }: VisibilityFormProps) => {
 const styles = StyleSheet.create({
   container: {
     gap: 20,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Palette.mauvePastel,
     padding: 20,
     borderRadius: 24,
   },
@@ -121,10 +122,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   subtitle: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 13,
   },
   section: {
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Palette.textPrimary,
   },
   levelRow: {
     flexDirection: 'row',
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   caption: {
-    color: '#475569',
+    color: Palette.textSecondary,
     fontSize: 12,
   },
 });

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MOOD_OPTIONS } from '@/constants/mood';
+import { Palette } from '@/constants/theme';
 
 type MoodScaleProps = {
   value: number;
@@ -16,11 +17,11 @@ export const MoodScale = ({ value, onChange }: MoodScaleProps) => (
         <Pressable
           key={option.value}
           accessibilityLabel={option.title}
-          style={[styles.item, isActive && [{ backgroundColor: option.color }]]}
+          style={[styles.item, isActive && styles.itemActive]}
           onPress={() => onChange(option.value)}>
-          <Text style={[styles.emoji, isActive ? styles.emojiActive : styles.emojiInactive]}>
-            {option.emoji}
-          </Text>
+          <View style={[styles.emojiBox, isActive && styles.emojiBoxActive]}>
+            <Text style={styles.emoji}>{option.emoji}</Text>
+          </View>
           <Text style={[styles.label, isActive && styles.labelActive]}>{option.title}</Text>
         </Pressable>
       );
@@ -36,28 +37,34 @@ const styles = StyleSheet.create({
   },
   item: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 20,
-    paddingVertical: 12,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  itemActive: {},
+  emojiBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: Palette.whiteBackground,
+    borderWidth: 1,
+    borderColor: '#E0E4EA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiBoxActive: {
+    backgroundColor: Palette.mauvePastel,
+    borderColor: Palette.mauvePastel,
   },
   emoji: {
-    fontSize: 24,
-  },
-  emojiActive: {
-    color: '#fff',
-  },
-  emojiInactive: {
-    color: '#1E293B',
+    fontSize: 26,
   },
   label: {
     fontSize: 12,
-    color: '#0F172A',
+    color: Palette.textPrimary,
     textAlign: 'center',
     fontWeight: '600',
   },
   labelActive: {
-    color: '#fff',
+    color: Palette.textPrimary,
   },
 });
