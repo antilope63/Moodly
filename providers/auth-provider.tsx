@@ -5,12 +5,13 @@ import React, {
   useMemo,
   useState,
   type PropsWithChildren,
-} from 'react';
+} from "react";
 
-import { supabase } from '@/lib/supabase';
-import type { BasicUser, RoleType } from '@/types/mood';
+import { AUTH_BYPASS } from "@/constants/config";
+import { supabase } from "@/lib/supabase";
+import type { BasicUser, RoleType } from "@/types/mood";
 
-type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -27,13 +28,13 @@ export const AuthProvider = ({ children }: PropsWithChildren<object>) => {
   const [user, setUser] = useState<BasicUser | null>(null);
   const [role, setRole] = useState<RoleType | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('unauthenticated');
+  const [status, setStatus] = useState<AuthStatus>("unauthenticated");
 
   const login = useCallback((userPayload: BasicUser, authToken?: string) => {
     setUser(userPayload);
-    setRole(userPayload.role ?? 'employee');
+    setRole(userPayload.role ?? "employee");
     setToken(authToken ?? null);
-    setStatus('authenticated');
+    setStatus("authenticated");
   }, []);
 
   const logout = useCallback(() => {
@@ -41,7 +42,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<object>) => {
     setUser(null);
     setRole(null);
     setToken(null);
-    setStatus('unauthenticated');
+    setStatus("unauthenticated");
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -56,13 +57,27 @@ export const AuthProvider = ({ children }: PropsWithChildren<object>) => {
     [status, user, role, token, login, logout]
   );
 
+  // Dev/test: bypass auth if enabled
+  if (AUTH_BYPASS && status !== "authenticated") {
+    login(
+      {
+        id: "dev-user",
+        username: "dev",
+        email: "dev@example.com",
+        role: "manager",
+        rawRole: "manager",
+      },
+      "dev-token"
+    );
+  }
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
