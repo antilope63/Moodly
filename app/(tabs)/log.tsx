@@ -1,3 +1,6 @@
+import { Switch as TamSwitch } from "@tamagui/switch";
+import { useToastController } from "@tamagui/toast";
+import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -9,22 +12,28 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { Button, Fieldset, Form, Input, Label, Paragraph, YStack, XStack } from "tamagui";
-import { Switch as TamSwitch } from "@tamagui/switch";
-import { useToastController } from "@tamagui/toast";
+import {
+  Button,
+  Fieldset,
+  Form,
+  Input,
+  Label,
+  Paragraph,
+  XStack,
+  YStack,
+} from "tamagui";
 
 import { CategoryPicker } from "@/components/mood/category-picker";
 import { MoodContextToggle } from "@/components/mood/context-toggle";
-import { MoodScale } from "@/components/mood/mood-scale";
 import { DEFAULT_VISIBILITY } from "@/components/mood/mood-publisher-card";
+import { MoodScale } from "@/components/mood/mood-scale";
 import { VisibilityForm } from "@/components/mood/visibility-form";
 import { getMoodOptionByValue } from "@/constants/mood";
 import { Palette } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
+import { useAuth } from "@/providers/auth-provider";
 import { createMoodEntry } from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
-import { useAuth } from "@/providers/auth-provider";
 
 export default function LogMoodScreen() {
   const router = useRouter();
@@ -55,7 +64,6 @@ export default function LogMoodScreen() {
       setIsSubmitting(true);
       await createMoodEntry({
         moodValue,
-        moodLabel: moodOption.label,
         context,
         isAnonymous,
         reasonSummary: reasonSummary.trim() || null,
@@ -88,7 +96,6 @@ export default function LogMoodScreen() {
   }, [
     context,
     isAnonymous,
-    moodOption.label,
     moodValue,
     note,
     reasonSummary,
@@ -111,7 +118,11 @@ export default function LogMoodScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.navRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityRole="button">
+            <Pressable
+              onPress={() => router.back()}
+              style={styles.backButton}
+              accessibilityRole="button"
+            >
               <Text style={styles.backLabel}>←</Text>
             </Pressable>
           </View>
@@ -127,7 +138,8 @@ export default function LogMoodScreen() {
               <YStack gap="$2">
                 <Text style={styles.title}>Publie ton humeur</Text>
                 <Paragraph size="$2" color="$color10">
-                  Choisis ton emoji, précise le contexte et partage les bonnes infos à ton équipe.
+                  Choisis ton emoji, précise le contexte et partage les bonnes
+                  infos à ton équipe.
                 </Paragraph>
               </YStack>
 
@@ -151,24 +163,31 @@ export default function LogMoodScreen() {
               <View style={styles.card}>
                 <Fieldset gap="$3">
                   <XStack alignItems="center" justifyContent="space-between">
-                    <Label style={styles.fieldLabel}>Souhaites-tu rester anonyme ?</Label>
+                    <Label style={styles.fieldLabel}>
+                      Souhaites-tu rester anonyme ?
+                    </Label>
                     <TamSwitch
                       size="$3"
                       checked={isAnonymous}
-                      onCheckedChange={(value) => setIsAnonymous(Boolean(value))}
+                      onCheckedChange={(value) =>
+                        setIsAnonymous(Boolean(value))
+                      }
                     >
                       <TamSwitch.Thumb animation="lazy" />
                     </TamSwitch>
                   </XStack>
                   <Paragraph size="$2" color="$color10">
-                    Ton emoji reste visible mais ton nom peut être masqué selon cette option.
+                    Ton emoji reste visible mais ton nom peut être masqué selon
+                    cette option.
                   </Paragraph>
                 </Fieldset>
               </View>
 
               <View style={styles.card}>
                 <Fieldset gap="$3">
-                  <Label style={styles.fieldLabel}>Pourquoi cette humeur ?</Label>
+                  <Label style={styles.fieldLabel}>
+                    Pourquoi cette humeur ?
+                  </Label>
                   <CategoryPicker
                     categories={categories}
                     selected={selectedCategories}
@@ -267,13 +286,13 @@ const styles = StyleSheet.create({
     color: Palette.textPrimary,
   },
   card: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: "#F5F3FF",
     padding: 20,
     borderRadius: 24,
     gap: 16,
     borderWidth: 1,
-    borderColor: '#E5E1FF',
-    shadowColor: '#00000011',
+    borderColor: "#E5E1FF",
+    shadowColor: "#00000011",
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },

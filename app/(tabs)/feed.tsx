@@ -51,6 +51,7 @@ type FeedListProps = {
   greeting: string;
   onOpenForm: () => void;
   onMoodPublished: () => Promise<void>;
+  canPublish: boolean;
 };
 
 const FeedList = ({
@@ -62,6 +63,7 @@ const FeedList = ({
   greeting,
   onOpenForm,
   onMoodPublished,
+  canPublish,
 }: FeedListProps) => {
   const highlightId = useMemo(() => moods.at(0)?.id, [moods]);
 
@@ -82,11 +84,13 @@ const FeedList = ({
       )}
       ListHeaderComponent={
         <View style={styles.listHeader}>
-          <MoodPublisherCard
-            greeting={greeting}
-            onPublished={onMoodPublished}
-            onOpenForm={onOpenForm}
-          />
+          {canPublish ? (
+            <MoodPublisherCard
+              greeting={greeting}
+              onPublished={onMoodPublished}
+              onOpenForm={onOpenForm}
+            />
+          ) : null}
           <View style={styles.feedHeader}>
             <Text style={styles.feedTitle}>Mood des collègues</Text>
             <Text style={styles.feedSubtitle}>Dernières humeurs partagées</Text>
@@ -117,11 +121,13 @@ export default function FeedScreen() {
 
   const sections = useMemo(() => {
     const base = BASE_SECTIONS.slice();
-    if (user?.rawRole === "super_admin") {
+    const raw = user?.rawRole?.toLowerCase();
+    const role = user?.role?.toLowerCase();
+    if (raw === "super_admin" || raw === "admin" || role === "admin") {
       base.push({ key: "admin", title: "Admin" });
     }
     return base;
-  }, [user?.rawRole]);
+  }, [user?.rawRole, user?.role]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -209,12 +215,17 @@ export default function FeedScreen() {
             greeting={`Bonjour ${user?.username ?? "Moodlover"} 👋`}
             onOpenForm={handleOpenForm}
             onMoodPublished={handleMoodPublished}
+            canPublish={user?.role !== "admin" && user?.rawRole !== "admin"}
           />
         </View>
         <View style={[styles.page, { width }]}>
           <ProfileDashboard embedded refreshKey={profileRefreshKey} />
         </View>
-        {user?.rawRole === "super_admin" ? (
+        {(() => {
+          const raw = user?.rawRole?.toLowerCase();
+          const role = user?.role?.toLowerCase();
+          return raw === "super_admin" || raw === "admin" || role === "admin";
+        })() ? (
           <View style={[styles.page, { width }]}>
             <AdminScreen />
           </View>

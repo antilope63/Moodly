@@ -183,7 +183,7 @@ const TimelineItem = ({ item }: { item: MoodEntry }) => (
     <Text style={styles.timelineEmoji}>{moodValueToEmoji(item.moodValue)}</Text>
     <View style={styles.timelineContent}>
       <View style={styles.timelineHeader}>
-        <Text style={styles.timelineMood}>{item.moodLabel}</Text>
+        <Text style={styles.timelineMood}>Mood: {item.moodValue}/5</Text>
         <Text style={styles.timelineDate}>
           {format(new Date(item.loggedAt), "d MMM yyyy", { locale: fr })}
         </Text>
@@ -206,7 +206,11 @@ export function ProfileDashboard({
 }: ProfileDashboardProps) {
   const { user, logout } = useAuth();
   const { summary } = useProfileSummary();
-  const isManager = user?.role === "manager" || user?.rawRole === "manager";
+  const isManager =
+    user?.role === "manager" ||
+    user?.role === "admin" ||
+    user?.rawRole === "manager" ||
+    user?.rawRole === "admin";
   const defaultScope: "me" | "team" | "user" = isManager ? "team" : "me";
   const [scope, setScope] = useState<"me" | "team" | "user">(defaultScope);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);

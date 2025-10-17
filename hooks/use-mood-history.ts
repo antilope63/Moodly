@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import type { MoodEntry } from '@/types/mood'; // On utilise le type MoodEntry complet
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export const useMoodHistory = () => {
   const { user } = useAuth();
@@ -35,7 +35,6 @@ export const useMoodHistory = () => {
         return {
           id: row.id,
           moodValue: row.mood_value,
-          moodLabel: row.mood_label,
           context: row.context,
           isAnonymous: row.is_anonymous,
           reasonSummary: row.reason_summary ?? undefined,

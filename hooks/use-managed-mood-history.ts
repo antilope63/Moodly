@@ -18,7 +18,6 @@ const mapRowToMoodEntry = (row: any): MoodEntry => {
   return {
     id: row.id,
     moodValue: row.mood_value,
-    moodLabel: row.mood_label,
     context: row.context,
     isAnonymous: row.is_anonymous,
     reasonSummary: row.reason_summary ?? undefined,

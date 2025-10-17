@@ -32,13 +32,13 @@ export const fetchManagedTeams = async (managerUserId: string): Promise<ManagedT
     }
   }
 
-  // Fallback: si aucune équipe via colonne Manager, on tente via team_members avec role manager
+  // Fallback: si aucune équipe via colonne Manager, on tente via team_members avec role manager ou admin
   if (!rows.length) {
     const { data: memberships, error: membershipError } = await supabase
       .from('team_members')
       .select('team_id, role')
       .eq('user_id', managerUserId)
-      .eq('role', 'manager');
+      .in('role', ['manager','admin']);
     if (membershipError) throw new Error(membershipError.message);
     const ids = (memberships ?? []).map((m: any) => m.team_id).filter(Boolean);
     if (ids.length) {
