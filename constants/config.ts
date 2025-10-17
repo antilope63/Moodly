@@ -9,3 +9,8 @@ export const SUPABASE_SERVICE_ROLE_KEY =
   process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || '';
 
 export const APP_NAME = 'Moodly';
+
+// Dev/testing: bypass auth (never enable in production)
+export const AUTH_BYPASS =
+  (process.env.EXPO_PUBLIC_AUTH_BYPASS || '').toLowerCase() === '1' ||
+  (process.env.EXPO_PUBLIC_AUTH_BYPASS || '').toLowerCase() === 'true';

@@ -1,114 +1,111 @@
-# Moodly – Journal d'humeurs pour le RSE
+# Moodly
 
-Moodly est une application mobile moderne (Expo/React Native) associée à une base de données Supabase. Elle permet aux employés de loguer leur humeur, partager le contexte et donner de la visibilité à leur manager et à la RH tout en respectant l’anonymat. Côté manager, une vue unique présente les tendances des 30 derniers jours pour piloter le bien-être de l’équipe.
+<p align="center">
+  <img src="https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React Native">
+  <img src="https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo">
+  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Tamagui-000?style=for-the-badge&logo=tamagui&logoColor=white" alt="Tamagui">
+</p>
 
-## Structure du repo
-
-- `app`, `components`, `hooks`, `services`, `types`, `constants` – application Expo Router.
-- `assets`, `scripts` – ressources partagées.
-
-## Prérequis
-
-- Node.js 20.x et npm 10.x (Expo 54 est aligné sur cette version).
-- Expo CLI (`npm install -g expo` recommandé) pour le développement mobile.
-- Supabase (compte gratuit) pour l’auth et la base.
-
-## Variables d’environnement
-
-Crée un fichier `.env` à la racine du projet Expo (même niveau que `package.json`). Exemple :
-
-```bash
-EXPO_PUBLIC_SUPABASE_URL=<url_supabase>
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon_key_supabase>
-```
-
-> ⚠️ En dev, l’auth Supabase utilise l’email/mot de passe (ou magic link). Crée un utilisateur dans l’Auth de Supabase et configure si besoin `user_metadata.role` parmi `employee|manager|hr`.
-
-```bash
-APP_KEYS=appKey1,appKey2
-API_TOKEN_SALT=apiTokenSalt
-ADMIN_JWT_SECRET=adminJwtSecret
-JWT_SECRET=jwtSecret
-```
-
-## Lancer les environnements
-
-```bash
-pnpm install
-pnpm start
-
-# 3. Démarrer l'app mobile (dans un autre terminal)
-cd ..
-npx expo start
-```
-
-## Modèle de données Supabase (suggestion)
-
-`Mood entry`
-
-- `moodValue` (1–5) et `moodLabel` (`awful` → `great`).
-- `context` (`personal`, `professional`, `mixed`).
-- `isAnonymous`, `reasonSummary`, `note`, `loggedAt`.
-- Relations : `categories` (many-to-many), `loggedBy` (user), `team`, `additionalViewers`.
-- Composant `privacy.visibility-settings` pour partager les raisons par population (collègues / manager / RH / custom).
-
-`Mood category`
-
-- Catégories préseedées (Charge de travail, Reconnaissance, Relations, Santé perso, Vie perso, Autre) avec emoji.
-
-`Team`
-
-- Nom + slug.
-- Relations manager, membres, contacts RH.
-
-### Bootstrap Strapi
-
-Lors du démarrage, `src/index.ts` :
-
-- Crée les rôles U&P `employee`, `manager`, `hr` si absents.
-- Seed les catégories d’humeur par défaut.
-
-Configure ensuite :
-
-1. Permissions publiques/authentifiées pour les routes `mood-entries`, `mood-categories`, `teams` selon ton besoin.
-2. Crée un token API ou implémente la connexion JWT (voir TODO).
-3. Associe les utilisateurs aux rôles `employee`, `manager`, `hr`.
-
-## Application mobile – parcours clés
-
-- **Login (placeholder)** : permet de choisir un prénom et un rôle pour explorer les écrans.
-- **Feed (`/(tabs)/index`)** : liste des humeurs partagées par l’équipe avec carte détaillée, badges de visibilité, refresh.
-- **Log (`/(tabs)/log`)** : formulaire complet pour publier une humeur (sélecteur emojis, contexte, catégories, commentaire, anonymat et règles de visibilité).
-- **Historique (`/(tabs)/history`)** : regroupe les logs par journée, calcule la moyenne et les jours positifs.
-- **Manager (`/(tabs)/manager`)** : accès conditionnel (manager/HR) avec carte moyenne 30 jours, mini-graph barres et focus par collaborateur.
-
-`services/mood.ts` encapsule les appels à Supabase (feed/historique, création de log). `hooks/use-mood-feed.ts`, `use-mood-history.ts`, `use-mood-categories.ts` gèrent la consommation côté client.
-
-## Étapes suivantes suggérées
-
-1. **Authentification Supabase** :
-   - Connexion via email/mot de passe (`supabase.auth.signInWithPassword`).
-   - Récupérer le JWT côté app (SecureStore) et l’injecter dans `apiFetch`.
-   - Protéger `mood-entries` (create/update) pour `employee`, et exposer une route managériale filtrée.
-2. **Règles de visibilité** :
-   - Enforcer côté SQL/RLS (Row Level Security) dans Supabase avec policies par rôle.
-   - Créer des vues ou RPC pour les agrégations (tendances).
-3. **Notifications & rappels** :
-   - Utiliser Expo Notifications pour le push (rappel quotidien à 15h par exemple).
-   - Créer une CRON Strapi pour envoyer l’alerte si `mood` pas logué.
-4. **Tests & CI** :
-   - Ajouter des tests unitaires sur les services/hook.
-   - Mettre en place ESLint + Prettier + Husky si besoin.
-5. **UI polish** :
-   - Connecter un design system (Tamagui, Restyle ou Tailwind) ou intégrer la charte Moodly.
-   - Ajouter un mode sombre complet (les styles utilisent déjà des couleurs neutres).
-
-## Ressources utiles
-
-- [Expo Router](https://docs.expo.dev/router/introduction/) – navigation déclarative.
-- [Supabase JS](https://supabase.com/docs/reference/javascript) – client JS officiel.
-- [Expo Secure Store](https://docs.expo.dev/versions/latest/sdk/securestore/) – stockage sécurisé si besoin.
+Une application mobile moderne pour le suivi de l'humeur en entreprise. Moodly permet aux employés de partager leur ressenti quotidien de manière simple et sécurisée, tout en offrant aux managers et aux RH une vue d'ensemble pour veiller au bien-être de leurs équipes.
 
 ---
 
-N’hésite pas à me dire si tu veux que l’on branche l’auth complète, la notif globale ou des dashboards plus avancés.
+## 📋 Table des matières
+
+1.  [Technologies Utilisées](#-Technologies-Utilisées)
+2.  [Démarrage Rapide](#️-démarrage-rapide)
+3.  [Accédez au dossier du projet](#-Accédez-au-dossier-du-projet)
+
+## 🚀 Technologies Utilisées
+
+| Domaine              | Technologie                                                          | Description                                                        |
+| -------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Framework Mobile** | [React Native](https://reactnative.dev/) & [Expo](https://expo.dev/) | Base du projet pour le développement mobile multiplateforme.       |
+| **Backend (BaaS)**   | [Supabase](https://supabase.com/)                                    | Gestion de l'authentification et de la base de données PostgreSQL. |
+| **Navigation**       | [Expo Router](https://docs.expo.dev/router/introduction/)            | Système de navigation                                              |
+| **UI & Style**       | [Tamagui](https://tamagui.dev/)                                      | Bibliothèque de composants                                         |
+| **Langage**          | [TypeScript](https://www.typescriptlang.org/)                        |
+
+## 🛠️ Démarrage Rapide
+
+Suivez ces étapes pour lancer le projet en local.
+
+### 1. Prérequis
+
+- [Node.js](https://nodejs.org/) (version 20.x ou supérieure)
+- [npm](https://www.npmjs.com/) (`pnpm` ou `yarn` fonctionnent aussi)
+- Un compte et un projet sur [Supabase](https://supabase.com/)
+
+### 2. Installation
+
+## Clonez ce dépôt
+
+Avec https
+
+```bash
+git clone https://github.com/antilope63/Moodly.git
+```
+
+Avec SSH
+
+```bash
+git clone git@github.com:antilope63/Moodly.git
+```
+
+Avec GitHub CLI
+
+```bash
+gh repo clone antilope63/Moodly
+```
+
+## 📁 Accédez au dossier du projet
+
+```bash
+cd moodly
+```
+
+## Installez les dépendances
+
+```bash
+npm install
+```
+
+### 3. Configuration
+
+Créez un fichier .env à la racine du projet et ajoutez-y vos clés d'environnement Supabase :
+
+#### ⚠️ Sur mac OS et linux :
+
+```bash
+cat <<'EOF' > .env
+EXPO_PUBLIC_SUPABASE_URL=VOTRE_URL_SUPABASE
+EXPO_PUBLIC_SUPABASE_ANON_KEY=VOTRE_CLÉ_ANON_SUPABASE
+EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=VOTRE_CLÉ_SERVICE_SUPABASE
+EOF
+echo ".env créé avec succès ✅"
+```
+
+#### ⚠️ Sur Windows :
+
+```bash
+echo "Création du fichier .env..." && cat <<'EOF' > .env
+EXPO_PUBLIC_SUPABASE_URL=VOTRE_URL_SUPABASE
+EXPO_PUBLIC_SUPABASE_ANON_KEY=VOTRE_CLÉ_ANON_SUPABASE
+EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=VOTRE_CLÉ_SERVICE_SUPABASE
+EOF
+echo ".env créé avec succès ✅"
+```
+
+Vous trouverez ces informations dans les paramètres **API** de votre projet Supabase
+
+### 4. Lancement de l'application
+
+Une fois l'installation et la configuration terminées, lancez le serveur de développement Expo :
+
+```bash
+npx expo start
+```
+
+Scannez ensuite le QR code avec l'application Expo Go sur votre téléphone
