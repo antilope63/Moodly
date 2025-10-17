@@ -133,23 +133,30 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
     return [];
   }
 
-  // Exclut les posts des admins
-  const { data, error } = await supabase
+  // Exclut les posts des admins (si présents) sans casser le typage UUID
+  const { data: adminMembers } = await supabase
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', teamId)
+    .eq('role', 'admin');
+  const adminIds = (adminMembers ?? [])
+    .map((r: any) => r.user_id as string)
+    .filter((id) => Boolean(id));
+
+  let query = supabase
     .from('mood_entries')
     .select(moodEntrySelect)
     .eq('team_id', teamId)
     .eq('is_anonymous', false)
-    .neq('user_id',
-      (
-        await supabase
-          .from('team_members')
-          .select('user_id')
-          .eq('team_id', teamId)
-          .eq('role', 'admin')
-      ).data?.[0]?.user_id || ''
-    )
     .order('logged_at', { ascending: false })
-    .limit(25);
+    .limit(25) as any;
+
+  if (adminIds.length > 0) {
+    const inList = `(${adminIds.map((id) => `"${id}"`).join(',')})`;
+    query = query.not('user_id', 'in', inList);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((row: any) => mapMoodEntry(normalizeDbRow(row)));
