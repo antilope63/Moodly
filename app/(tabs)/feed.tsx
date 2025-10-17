@@ -16,6 +16,7 @@ import { MoodPublisherCard } from "@/components/mood/mood-publisher-card";
 import { Palette } from "@/constants/theme";
 import { useMoodFeed } from "@/hooks/use-mood-feed";
 import { useAuth } from "@/providers/auth-provider";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import AdminScreen from "./admin";
 import { ProfileDashboard } from "./profile";
@@ -50,7 +51,6 @@ type FeedListProps = {
   refresh: () => Promise<void>;
   greeting: string;
   onOpenForm: () => void;
-  onMoodPublished: () => Promise<void>;
   canPublish: boolean;
 };
 
@@ -62,8 +62,7 @@ const FeedList = ({
   refresh,
   greeting,
   onOpenForm,
-  onMoodPublished,
-  canPublish,
+  canPublish = true,
 }: FeedListProps) => {
   const highlightId = useMemo(() => moods.at(0)?.id, [moods]);
 
@@ -84,12 +83,11 @@ const FeedList = ({
       )}
       ListHeaderComponent={
         <View style={styles.listHeader}>
-          {canPublish ? (
-            <MoodPublisherCard
-              greeting={greeting}
-              onPublished={onMoodPublished}
-              onOpenForm={onOpenForm}
-            />
+          {Boolean(canPublish) ? (
+            <View style={styles.publisherSection}>
+              <Text style={styles.greetingHeadline}>{greeting}</Text>
+              <MoodPublisherCard onOpenForm={onOpenForm} />
+            </View>
           ) : null}
           <View style={styles.feedHeader}>
             <Text style={styles.feedTitle}>Mood des collègues</Text>
@@ -137,19 +135,22 @@ export default function FeedScreen() {
     }
   }, [refresh]);
 
-  const handleMoodPublished = useCallback(async () => {
-    await handleRefresh();
-  }, [handleRefresh]);
-
-  const handleOpenForm = useCallback(() => {
-    router.push("/(tabs)/log");
-  }, [router]);
+  // Rafraîchit le feed à chaque retour sur cet onglet
+  useFocusEffect(
+    useCallback(() => {
+      void handleRefresh();
+    }, [handleRefresh])
+  );
 
   const resetScroll = useCallback((index: number) => {
     if (index === 0) {
       feedListRef.current?.scrollToOffset({ offset: 0, animated: false });
     }
   }, []);
+
+  const handleOpenForm = useCallback(() => {
+    router.push("/(tabs)/log");
+  }, [router]);
 
   const handleSelectSection = useCallback(
     (index: number) => {
@@ -214,7 +215,6 @@ export default function FeedScreen() {
             refresh={handleRefresh}
             greeting={`Bonjour ${user?.username ?? "Moodlover"} 👋`}
             onOpenForm={handleOpenForm}
-            onMoodPublished={handleMoodPublished}
             canPublish={user?.role !== "admin" && user?.rawRole !== "admin"}
           />
         </View>
@@ -279,6 +279,14 @@ const styles = StyleSheet.create({
   listHeader: {
     gap: 24,
     marginBottom: 12,
+  },
+  publisherSection: {
+    gap: 16,
+  },
+  greetingHeadline: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Palette.textPrimary,
   },
   cardWrapper: {
     marginBottom: 12,

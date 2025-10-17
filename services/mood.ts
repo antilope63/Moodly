@@ -151,6 +151,7 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
     .select(moodEntrySelect)
     .eq('team_id', teamId)
     .eq('is_anonymous', false)
+    .neq('user_id', currentUser.id)
     .order('logged_at', { ascending: false })
     .limit(25) as any;
 
@@ -202,6 +203,85 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
   });
 };
 
+export const fetchMyTodayMoodEntry = async (): Promise<MoodEntry | null> => {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  const me = authData?.user;
+  if (!me) return null;
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('user_id', me.id)
+    .gte('logged_at', start.toISOString())
+    .lt('logged_at', end.toISOString())
+    .order('logged_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
+  if (!data) return null;
+  return mapMoodEntry(normalizeDbRow(data));
+};
+
+export const updateMoodEntry = async (
+  id: number,
+  payload: UpdateMoodEntryPayload,
+): Promise<MoodEntry> => {
+  const updatePayload = {
+    mood_value: payload.moodValue,
+    context: payload.context,
+    is_anonymous: payload.isAnonymous,
+    reason_summary: payload.reasonSummary ?? null,
+    note: payload.note ?? null,
+    logged_at: payload.loggedAt ?? new Date().toISOString(),
+    visibility: payload.visibility,
+  } as const;
+
+  const { error: upError } = await supabase
+    .from('mood_entries')
+    .update(updatePayload)
+    .eq('id', id);
+  if (upError) throw new Error(upError.message);
+
+  if (Array.isArray(payload.categories)) {
+    await supabase.from('mood_entry_categories').delete().eq('mood_entry_id', id);
+    if (payload.categories.length) {
+      const rows = payload.categories.map((categoryId) => ({
+        mood_entry_id: id,
+        mood_category_id: categoryId,
+      }));
+      const { error: relErr } = await supabase
+        .from('mood_entry_categories')
+        .insert(rows);
+      if (relErr) throw new Error(relErr.message);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('id', id)
+    .single();
+  if (error) throw new Error(error.message);
+  return mapMoodEntry(normalizeDbRow(data));
+};
+
+export const fetchMoodEntryById = async (id: number): Promise<MoodEntry | null> => {
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('id', id)
+    .maybeSingle();
+  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
+  if (!data) return null;
+  return mapMoodEntry(normalizeDbRow(data));
+};
+
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
   const { data, error } = await supabase
     .from('mood_entries')
@@ -234,6 +314,17 @@ export type CreateMoodEntryPayload = {
   visibility: VisibilitySettings;
   teamId?: number | null;
   userId?: string;
+};
+
+export type UpdateMoodEntryPayload = {
+  moodValue: number;
+  context: MoodContext;
+  isAnonymous: boolean;
+  reasonSummary?: string | null;
+  note?: string | null;
+  loggedAt?: string;
+  categories: number[];
+  visibility: VisibilitySettings;
 };
 
 export const createMoodEntry = async (

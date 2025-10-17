@@ -1,7 +1,7 @@
 import { Switch as TamSwitch } from "@tamagui/switch";
 import { useToastController } from "@tamagui/toast";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -32,13 +32,18 @@ import { getMoodOptionByValue } from "@/constants/mood";
 import { Palette } from "@/constants/theme";
 import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { useAuth } from "@/providers/auth-provider";
-import { createMoodEntry } from "@/services/mood";
+import {
+  createMoodEntry,
+  fetchMyTodayMoodEntry,
+  updateMoodEntry,
+} from "@/services/mood";
 import type { MoodContext, VisibilitySettings } from "@/types/mood";
 
 export default function LogMoodScreen() {
   const router = useRouter();
   const toast = useToastController();
   const { user } = useAuth();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [moodValue, setMoodValue] = useState(4);
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -53,6 +58,26 @@ export default function LogMoodScreen() {
 
   const moodOption = getMoodOptionByValue(moodValue);
 
+  useEffect(() => {
+    let mounted = true;
+    fetchMyTodayMoodEntry()
+      .then((entry) => {
+        if (!mounted || !entry) return;
+        setEditingId(entry.id);
+        setMoodValue(entry.moodValue);
+        setContext(entry.context);
+        setIsAnonymous(entry.isAnonymous);
+        setSelectedCategories((entry.categories || []).map((c) => c.id));
+        setReasonSummary(entry.reasonSummary || "");
+        setNote(entry.note || "");
+        setVisibility(entry.visibility);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     if (!user?.id) {
       toast.show("Oups", {
@@ -62,20 +87,35 @@ export default function LogMoodScreen() {
     }
     try {
       setIsSubmitting(true);
-      await createMoodEntry({
-        moodValue,
-        context,
-        isAnonymous,
-        reasonSummary: reasonSummary.trim() || null,
-        note: note.trim() || null,
-        loggedAt: new Date().toISOString(),
-        categories: selectedCategories,
-        visibility,
-        userId: user.id,
-      });
+      if (editingId) {
+        await updateMoodEntry(editingId, {
+          moodValue,
+          context,
+          isAnonymous,
+          reasonSummary: reasonSummary.trim() || null,
+          note: note.trim() || null,
+          loggedAt: new Date().toISOString(),
+          categories: selectedCategories,
+          visibility,
+        });
+      } else {
+        await createMoodEntry({
+          moodValue,
+          context,
+          isAnonymous,
+          reasonSummary: reasonSummary.trim() || null,
+          note: note.trim() || null,
+          loggedAt: new Date().toISOString(),
+          categories: selectedCategories,
+          visibility,
+          userId: user.id,
+        });
+      }
 
-      toast.show("Humeur enregistrée", {
-        description: "Ton humeur a été prise en compte pour aujourd’hui.",
+      toast.show(editingId ? "Humeur mise à jour" : "Humeur enregistrée", {
+        description: editingId
+          ? "Tes informations du jour ont été mises à jour."
+          : "Ton humeur a été prise en compte pour aujourd’hui.",
       });
 
       setSelectedCategories([]);
@@ -85,7 +125,22 @@ export default function LogMoodScreen() {
       setMoodValue(4);
       setVisibility(DEFAULT_VISIBILITY);
 
-      router.replace("/(tabs)/feed");
+      // Ferme toute modale/feuille éventuelle puis retourne au feed
+      const dismissAll = (router as unknown as { dismissAll?: () => void })
+        ?.dismissAll;
+      if (typeof dismissAll === "function") {
+        try {
+          dismissAll();
+          return;
+        } catch {
+          // fallback vers navigation classique si dismissAll plante
+        }
+      }
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/feed");
+      }
     } catch (err) {
       toast.show("Oups", {
         description: (err as Error).message,
@@ -162,7 +217,7 @@ export default function LogMoodScreen() {
 
               <View style={styles.card}>
                 <Fieldset gap="$3">
-                  <XStack alignItems="center" justifyContent="space-between">
+                  <XStack>
                     <Label style={styles.fieldLabel}>
                       Souhaites-tu rester anonyme ?
                     </Label>
@@ -233,14 +288,12 @@ export default function LogMoodScreen() {
             </YStack>
 
             <Form.Trigger asChild>
-              <Button
-                theme="accent"
-                size="$5"
-                borderRadius="$8"
-                alignSelf="stretch"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Enregistrement..." : "Publier mon humeur"}
+              <Button theme="accent" size="$5" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Enregistrement..."
+                  : editingId
+                  ? "Mettre à jour mon humeur"
+                  : "Publier mon humeur"}
               </Button>
             </Form.Trigger>
           </Form>
