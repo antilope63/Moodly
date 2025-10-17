@@ -34,7 +34,7 @@ __export(tamagui_config_exports, {
 });
 module.exports = __toCommonJS(tamagui_config_exports);
 
-// node_modules/.pnpm/@tamagui+constants@1.135.2_react-native@0.81.4_@babel+core@7.28.4_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/@tamagui/constants/dist/esm/constants.mjs
+// node_modules/.pnpm/@tamagui+constants@1.135.2__e6c302c2a15a69c7e11a03e84a5cdd3a/node_modules/@tamagui/constants/dist/esm/constants.mjs
 var import_react = require("react");
 var import_react2 = require("react");
 var isWeb = true;
@@ -46,7 +46,7 @@ var isChrome = typeof navigator < "u" && /Chrome/.test(navigator.userAgent || ""
 var isWebTouchable = isClient && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 var isIos = process.env.TEST_NATIVE_PLATFORM === "ios";
 
-// node_modules/.pnpm/@tamagui+use-presence@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_7ad50d8909565127b44094d8603b60c3/node_modules/@tamagui/use-presence/dist/esm/PresenceContext.mjs
+// node_modules/.pnpm/@tamagui+use-presence@1.135_7ad50d8909565127b44094d8603b60c3/node_modules/@tamagui/use-presence/dist/esm/PresenceContext.mjs
 var React = __toESM(require("react"), 1);
 var import_jsx_runtime = require("react/jsx-runtime");
 var PresenceContext = React.createContext(null);
@@ -58,7 +58,7 @@ var ResetPresence = /* @__PURE__ */ __name((props) => {
   });
 }, "ResetPresence");
 
-// node_modules/.pnpm/@tamagui+use-presence@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_7ad50d8909565127b44094d8603b60c3/node_modules/@tamagui/use-presence/dist/esm/usePresence.mjs
+// node_modules/.pnpm/@tamagui+use-presence@1.135_7ad50d8909565127b44094d8603b60c3/node_modules/@tamagui/use-presence/dist/esm/usePresence.mjs
 var React2 = __toESM(require("react"), 1);
 function usePresence() {
   const context = React2.useContext(PresenceContext);
@@ -73,7 +73,7 @@ function usePresence() {
 }
 __name(usePresence, "usePresence");
 
-// node_modules/.pnpm/tamagui@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@7.28.4_@_4f056c52227fe80dd733438aa7399312/node_modules/tamagui/dist/esm/createTamagui.mjs
+// node_modules/.pnpm/tamagui@1.135.2_react-dom@1_4f056c52227fe80dd733438aa7399312/node_modules/tamagui/dist/esm/createTamagui.mjs
 var import_core = require("@tamagui/core");
 var createTamagui = process.env.NODE_ENV !== "development" ? import_core.createTamagui : (conf) => {
   const sizeTokenKeys = ["$true"], hasKeys = /* @__PURE__ */ __name((expectedKeys, obj) => expectedKeys.every((k) => typeof obj[k] < "u"), "hasKeys"), tamaguiConfig = (0, import_core.createTamagui)(conf);
@@ -116,7 +116,7 @@ Expected a subset of: ${expected.join(", ")}
   return tamaguiConfig;
 };
 
-// node_modules/.pnpm/@tamagui+shorthands@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+c_702c7fed9a99997f110457289701ef8b/node_modules/@tamagui/shorthands/dist/esm/v4.mjs
+// node_modules/.pnpm/@tamagui+shorthands@1.135.2_702c7fed9a99997f110457289701ef8b/node_modules/@tamagui/shorthands/dist/esm/v4.mjs
 var shorthands = {
   // text
   text: "textAlign",
@@ -199,13 +199,13 @@ var nonCompilerShorthands = [
 ];
 Object.assign(shorthands, Object.fromEntries(nonCompilerShorthands));
 
-// node_modules/.pnpm/@tamagui+themes@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/utils.mjs
+// node_modules/.pnpm/@tamagui+themes@1.135.2_rea_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/utils.mjs
 function sizeToSpace(v) {
   return v === 0 ? 0 : v === 2 ? 0.5 : v === 4 ? 1 : v === 8 ? 1.5 : v <= 16 ? Math.round(v * 0.333) : Math.floor(v * 0.7 - 12);
 }
 __name(sizeToSpace, "sizeToSpace");
 
-// node_modules/.pnpm/@tamagui+themes@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/v4-tokens.mjs
+// node_modules/.pnpm/@tamagui+themes@1.135.2_rea_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/v4-tokens.mjs
 var size = {
   $0: 0,
   "$0.25": 2,
@@ -274,13 +274,13 @@ var tokens = {
   size
 };
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/isMinusZero.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/isMinusZero.mjs
 function isMinusZero(value) {
   return 1 / value === Number.NEGATIVE_INFINITY;
 }
 __name(isMinusZero, "isMinusZero");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/themeInfo.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/themeInfo.mjs
 var THEME_INFO = /* @__PURE__ */ new Map();
 var getThemeInfo = /* @__PURE__ */ __name((theme, name) => THEME_INFO.get(name || JSON.stringify(theme)), "getThemeInfo");
 var setThemeInfo = /* @__PURE__ */ __name((theme, info) => {
@@ -291,7 +291,7 @@ var setThemeInfo = /* @__PURE__ */ __name((theme, info) => {
   THEME_INFO.set(info.name || JSON.stringify(theme), next), THEME_INFO.set(JSON.stringify(info.definition), next);
 }, "setThemeInfo");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/createTheme.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/createTheme.mjs
 var identityCache = /* @__PURE__ */ new Map();
 function createTheme(palette, definition, options, name, skipCache = false) {
   const cacheKey = skipCache ? "" : JSON.stringify([name, palette, definition, options]);
@@ -315,7 +315,7 @@ var getValue = /* @__PURE__ */ __name((palette, value) => {
   return palette[index];
 }, "getValue");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/helpers.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/helpers.mjs
 function objectEntries(obj) {
   return Object.entries(obj);
 }
@@ -325,7 +325,7 @@ function objectFromEntries(arr) {
 }
 __name(objectFromEntries, "objectFromEntries");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/masks.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/masks.mjs
 var createMask = /* @__PURE__ */ __name((createMask2) => typeof createMask2 == "function" ? {
   name: createMask2.name || "unnamed",
   mask: createMask2
@@ -410,7 +410,7 @@ var createStrengthenMask = /* @__PURE__ */ __name((defaultOptions) => ({
   }, defaultOptions).mask
 }), "createStrengthenMask");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/applyMask.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/applyMask.mjs
 function applyMaskStateless(info, mask, options = {}, parentName) {
   const skip = {
     ...options.skip
@@ -431,7 +431,7 @@ function applyMaskStateless(info, mask, options = {}, parentName) {
 }
 __name(applyMaskStateless, "applyMaskStateless");
 
-// node_modules/.pnpm/@tamagui+create-theme@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/combineMasks.mjs
+// node_modules/.pnpm/@tamagui+create-theme@1.135_29eac7f1df35b6fb92d3ceddbe1c3228/node_modules/@tamagui/create-theme/dist/esm/combineMasks.mjs
 var combineMasks = /* @__PURE__ */ __name((...masks2) => ({
   name: "combine-mask",
   mask: /* @__PURE__ */ __name((template, opts) => {
@@ -581,14 +581,14 @@ function hsla(hue, saturation, lightness, alpha) {
 }
 __name(hsla, "hsla");
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/helpers.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/helpers.mjs
 var objectKeys = /* @__PURE__ */ __name((obj) => Object.keys(obj), "objectKeys");
 function objectFromEntries2(arr) {
   return Object.fromEntries(arr);
 }
 __name(objectFromEntries2, "objectFromEntries");
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplates.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplates.mjs
 var getTemplates = /* @__PURE__ */ __name(() => {
   const lightTemplates = getBaseTemplates("light"), darkTemplates = getBaseTemplates("dark");
   return {
@@ -698,7 +698,7 @@ var getBaseTemplates = /* @__PURE__ */ __name((scheme) => {
 }, "getBaseTemplates");
 var defaultTemplates = getTemplates();
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/getThemeSuitePalettes.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/getThemeSuitePalettes.mjs
 var paletteSize = 12;
 var generateColorPalette = /* @__PURE__ */ __name(({
   palette: buildPalette,
@@ -743,7 +743,7 @@ function getThemeSuitePalettes(palette) {
 }
 __name(getThemeSuitePalettes, "getThemeSuitePalettes");
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/createThemes.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/createThemes.mjs
 var defaultPalettes = createPalettes(getThemesPalettes({
   base: {
     palette: ["#fff", "#000"]
@@ -825,7 +825,7 @@ function createPalettes(palettes) {
 }
 __name(createPalettes, "createPalettes");
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplatesStronger.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplatesStronger.mjs
 var getTemplates2 = /* @__PURE__ */ __name(() => {
   const lightTemplates = getBaseTemplates2("light"), darkTemplates = getBaseTemplates2("dark");
   return {
@@ -935,7 +935,7 @@ var getBaseTemplates2 = /* @__PURE__ */ __name((scheme) => {
 }, "getBaseTemplates");
 var defaultTemplatesStronger = getTemplates2();
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplatesStrongest.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/defaultTemplatesStrongest.mjs
 var getTemplates3 = /* @__PURE__ */ __name(() => {
   const lightTemplates = getBaseTemplates3("light"), darkTemplates = getBaseTemplates3("dark");
   return {
@@ -1045,7 +1045,7 @@ var getBaseTemplates3 = /* @__PURE__ */ __name((scheme) => {
 }, "getBaseTemplates");
 var defaultTemplatesStrongest = getTemplates3();
 
-// node_modules/.pnpm/@tamagui+theme-builder@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babe_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/masks.mjs
+// node_modules/.pnpm/@tamagui+theme-builder@1.13_c76bc3a73d48c685deac09a02bd86b94/node_modules/@tamagui/theme-builder/dist/esm/masks.mjs
 var masks = {
   identity: createIdentityMask(),
   soften: createSoftenMask(),
@@ -1131,7 +1131,7 @@ var masks = {
   })
 };
 
-// node_modules/.pnpm/@tamagui+themes@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@babel+core@_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/generated-v4.mjs
+// node_modules/.pnpm/@tamagui+themes@1.135.2_rea_39cacbb44589c8caea2449578229d6b0/node_modules/@tamagui/themes/dist/esm/generated-v4.mjs
 function t(a) {
   let res = {};
   for (const [ki, vi] of a) res[ks[ki]] = colors[vi];
@@ -1513,7 +1513,7 @@ var themes = {
   dark_green_ProgressIndicator: n66
 };
 
-// node_modules/.pnpm/@tamagui+animations-css@1.135.2_react-dom@19.1.0_react@19.1.0__react-native@0.81.4_@bab_b92463eff8bbd7f38fecb673bd188645/node_modules/@tamagui/animations-css/dist/esm/createAnimations.mjs
+// node_modules/.pnpm/@tamagui+animations-css@1.1_b92463eff8bbd7f38fecb673bd188645/node_modules/@tamagui/animations-css/dist/esm/createAnimations.mjs
 var import_web = require("@tamagui/core");
 var import_react3 = __toESM(require("react"), 1);
 function extractDuration(animation) {
@@ -1605,7 +1605,7 @@ function createAnimations(animations) {
 }
 __name(createAnimations, "createAnimations");
 
-// node_modules/.pnpm/@tamagui+config@1.135.2_react-dom@19.1.0_react@19.1.0__react-native-reanimated@4.1.3_@b_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/animationsCSS.mjs
+// node_modules/.pnpm/@tamagui+config@1.135.2_rea_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/animationsCSS.mjs
 var smoothBezier = "cubic-bezier(0.215, 0.610, 0.355, 1.000)";
 var animationsCSS = createAnimations({
   "75ms": "ease-in 75ms",
@@ -1622,7 +1622,7 @@ var animationsCSS = createAnimations({
   tooltip: "ease-in 400ms"
 });
 
-// node_modules/.pnpm/@tamagui+config@1.135.2_react-dom@19.1.0_react@19.1.0__react-native-reanimated@4.1.3_@b_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4-fonts.mjs
+// node_modules/.pnpm/@tamagui+config@1.135.2_rea_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4-fonts.mjs
 var import_core2 = require("@tamagui/core");
 var createSystemFont = /* @__PURE__ */ __name(({
   font = {},
@@ -1672,7 +1672,7 @@ var fonts = {
   })
 };
 
-// node_modules/.pnpm/@tamagui+config@1.135.2_react-dom@19.1.0_react@19.1.0__react-native-reanimated@4.1.3_@b_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4-media.mjs
+// node_modules/.pnpm/@tamagui+config@1.135.2_rea_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4-media.mjs
 var breakpoints = {
   "2xl": 1536,
   xl: 1280,
@@ -1737,7 +1737,7 @@ var mediaQueryDefaultActive = {
   "2xs": true
 };
 
-// node_modules/.pnpm/@tamagui+config@1.135.2_react-dom@19.1.0_react@19.1.0__react-native-reanimated@4.1.3_@b_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4.mjs
+// node_modules/.pnpm/@tamagui+config@1.135.2_rea_9385ff25e783d2700a7e1e3e0d68b86d/node_modules/@tamagui/config/dist/esm/v4.mjs
 var selectionStyles = /* @__PURE__ */ __name((theme) => theme.color5 ? {
   backgroundColor: theme.color5,
   color: theme.color11
