@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type {
+  BasicUser,
   MoodCategory,
   MoodContext,
   MoodEntry,
@@ -28,6 +29,8 @@ type DbMoodEntry = {
   note?: string | null;
   logged_at: string;
   visibility: VisibilitySettings;
+  user_id?: string; // pour enrichir loggedBy
+  user_email?: string | null;
 };
 
 type DbMoodEntryRow = DbMoodEntry & {
@@ -105,7 +108,7 @@ const normalizeDbRow = (row: any): DbMoodEntryRow => {
 };
 
 const moodEntrySelect =
-  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, team:teams(id,name,slug), categories:mood_entry_categories(mood_categories(*))';
+  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, user_id, user_email, team:teams(id,name,slug), categories:mood_entry_categories(mood_categories(*))';
 
 export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
   // Récupère l'utilisateur connecté (uuid/email)
@@ -158,8 +161,45 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
+  const rows = (data ?? []) as any[];
+  const userIds = Array.from(
+    new Set(
+      rows
+        .map((r) => r.user_id as string | undefined)
+        .filter((v): v is string => Boolean(v))
+    )
+  );
+  let profilesMap = new Map<string, { id: string; username?: string | null; email?: string | null }>();
+  if (userIds.length) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, email')
+      .in('id', userIds);
+    (profiles ?? []).forEach((p: any) => {
+      profilesMap.set(p.id as string, {
+        id: p.id as string,
+        username: (p.username as string | null) ?? null,
+        email: (p.email as string | null) ?? null,
+      });
+    });
+  }
 
-  return (data ?? []).map((row: any) => mapMoodEntry(normalizeDbRow(row)));
+  return rows.map((row: any) => {
+    const normalized = normalizeDbRow(row);
+    const base = mapMoodEntry(normalized);
+    const profile = row.user_id ? profilesMap.get(row.user_id as string) : undefined;
+    const fallbackUsername = (row.user_email as string | null)?.split('@')[0] ?? 'Collègue';
+    const loggedBy: BasicUser | null = row.user_id
+      ? {
+          id: row.user_id as string,
+          username: profile?.username || fallbackUsername,
+          email: profile?.email || (row.user_email as string | undefined),
+          role: undefined,
+          rawRole: null,
+        }
+      : null;
+    return { ...base, loggedBy };
+  });
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
