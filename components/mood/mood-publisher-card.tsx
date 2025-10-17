@@ -46,9 +46,7 @@ type MoodPublisherCardProps = {
   onOpenForm?: () => void;
 };
 
-export const MoodPublisherCard = ({
-  onOpenForm,
-}: MoodPublisherCardProps) => {
+export const MoodPublisherCard = ({ onOpenForm }: MoodPublisherCardProps) => {
   const [todayMood, setTodayMood] = useState<MoodEntry | null>(null);
 
   const loadTodayMood = useCallback(async () => {
@@ -90,7 +88,9 @@ export const MoodPublisherCard = ({
       <Text style={styles.title}>Ton mood</Text>
 
       <View style={styles.summaryWrapper}>
-        <View style={[styles.summaryAccent, { backgroundColor: accentColor }]} />
+        <View
+          style={[styles.summaryAccent, { backgroundColor: accentColor }]}
+        />
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View
@@ -99,9 +99,7 @@ export const MoodPublisherCard = ({
                 { borderColor: accentColor, backgroundColor: "#F7F6FF" },
               ]}
             >
-              <Text style={styles.moodEmoji}>
-                {moodOption?.emoji ?? "🙂"}
-              </Text>
+              <Text style={styles.moodEmoji}>{moodOption?.emoji ?? "🙂"}</Text>
             </View>
             <View style={styles.summaryTexts}>
               <Text style={styles.moodTitle}>
