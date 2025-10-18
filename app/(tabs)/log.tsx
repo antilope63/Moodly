@@ -1,10 +1,9 @@
 import { Switch as TamSwitch } from "@tamagui/switch";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -15,14 +14,12 @@ import {
 } from "react-native";
 import { Button, Input, Slider } from "tamagui";
 
-import { CategoryPicker } from "@/components/mood/category-picker";
 import { MoodContextToggle } from "@/components/mood/context-toggle";
 import { DEFAULT_VISIBILITY } from "@/components/mood/mood-publisher-card";
 import { MoodScale } from "@/components/mood/mood-scale";
 import { VisibilityForm } from "@/components/mood/visibility-form";
 import { getMoodOptionByValue } from "@/constants/mood";
 import { Palette } from "@/constants/theme";
-import { useMoodCategories } from "@/hooks/use-mood-categories";
 import { useAuth } from "@/providers/auth-provider";
 import {
   createMoodEntry,
@@ -124,8 +121,6 @@ export default function LogMoodScreen() {
   );
   const [context, setContext] = useState<MoodContext>("professional");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
-  const [reasonSummary, setReasonSummary] = useState("");
   const [note, setNote] = useState("");
   const [visibility, setVisibility] =
     useState<VisibilitySettings>(DEFAULT_VISIBILITY);
@@ -135,8 +130,6 @@ export default function LogMoodScreen() {
   const [energyChoice, setEnergyChoice] = useState<string | null>(null);
   const [prideValue, setPrideValue] = useState<number>(70);
   const [isConfigOpen, setConfigOpen] = useState(false);
-
-  const { categories, isLoading: isLoadingCategories } = useMoodCategories();
 
   const moodOption = getMoodOptionByValue(moodValue);
   const selectedFreedom = FREEDOM_OPTIONS.find(
@@ -154,36 +147,6 @@ export default function LogMoodScreen() {
       setMoodValue(initialMoodFromParams);
     }
   }, [initialMoodFromParams]);
-
-  useEffect(() => {
-    let mounted = true;
-    fetchMyTodayMoodEntry()
-      .then((entry) => {
-        if (!mounted || !entry) return;
-        setEditingId(entry.id);
-        setMoodValue(entry.moodValue);
-        setContext(entry.context);
-        setIsAnonymous(entry.isAnonymous);
-        setSelectedCategories((entry.categories || []).map((c) => c.id));
-        setReasonSummary(entry.reasonSummary || "");
-        setNote(entry.note || "");
-        setVisibility(entry.visibility);
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const openConfig = useCallback(() => {
-    setConfigOpen(true);
-  }, []);
-
-  const closeConfig = useCallback(() => {
-    if (!isSubmitting) {
-      setConfigOpen(false);
-    }
-  }, [isSubmitting]);
 
   const renderReflectionCard = (
     title: string,
@@ -225,12 +188,96 @@ export default function LogMoodScreen() {
   };
 
   const prideLabel = `Je me sens efficace à ${prideValue}% aujourd’hui.`;
-  const reflectionSummary = [
-    selectedFreedom?.message ?? null,
-    selectedSupport?.message ?? null,
-    selectedEnergy?.message ?? null,
-    prideLabel,
-  ].filter(Boolean) as string[];
+  const reflectionSummary = useMemo(
+    () =>
+      [
+        selectedFreedom?.message ?? null,
+        selectedSupport?.message ?? null,
+        selectedEnergy?.message ?? null,
+        prideLabel,
+      ].filter(Boolean) as string[],
+    [prideLabel, selectedEnergy?.message, selectedFreedom?.message, selectedSupport?.message]
+  );
+
+  const canOpenConfig = useMemo(
+    () => Boolean(freedomChoice && supportChoice && energyChoice),
+    [energyChoice, freedomChoice, supportChoice]
+  );
+
+  const syncVisibility = useCallback(
+    (updater: (prev: VisibilitySettings) => VisibilitySettings) => {
+      setVisibility((prev) => {
+        const next = updater(prev);
+        if (next.shareMoodWithAll) {
+          return {
+            ...next,
+            showReasonToPeers: "visible",
+            showReasonToManagers: "visible",
+            showReasonToHr: "visible",
+          };
+        }
+        return {
+          ...next,
+          showReasonToHr: next.showReasonToManagers,
+        };
+      });
+    },
+    []
+  );
+
+  const handleVisibilityChange = useCallback(
+    (next: VisibilitySettings) => {
+      syncVisibility(() => next);
+      if (next.shareMoodWithAll && isAnonymous) {
+        setIsAnonymous(false);
+      }
+    },
+    [isAnonymous, syncVisibility]
+  );
+
+  const handleAnonymousChange = useCallback(
+    (next: boolean) => {
+      setIsAnonymous(next);
+      if (next) {
+        syncVisibility((prev) => ({
+          ...prev,
+          showReasonToPeers: "anonymized",
+          showReasonToManagers: "anonymized",
+        }));
+      } else {
+        syncVisibility((prev) => ({
+          ...prev,
+          showReasonToPeers: prev.showReasonToPeers === "anonymized" ? "visible" : prev.showReasonToPeers,
+          showReasonToManagers: prev.showReasonToManagers === "anonymized" ? "visible" : prev.showReasonToManagers,
+        }));
+      }
+    },
+    [syncVisibility]
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    fetchMyTodayMoodEntry()
+      .then((entry) => {
+        if (!mounted || !entry) return;
+        setEditingId(entry.id);
+        setMoodValue(entry.moodValue);
+        setContext(entry.context);
+        setIsAnonymous(entry.isAnonymous);
+        setNote(entry.note || "");
+        setFreedomChoice(entry.freedomChoice ?? null);
+        setSupportChoice(entry.supportChoice ?? null);
+        setEnergyChoice(entry.energyChoice ?? null);
+        setPrideValue(
+          typeof entry.pridePercent === "number" ? entry.pridePercent : 70
+        );
+        syncVisibility(() => entry.visibility);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [syncVisibility]);
 
   const handleSubmit = useCallback(async () => {
     if (!user?.id) {
@@ -258,14 +305,11 @@ export default function LogMoodScreen() {
         null;
 
       const summaryForSubmit =
-        reasonSummary.trim() || summaryFallback || null;
+        reflectionLines.length > 0
+          ? reflectionLines.join(" • ")
+          : summaryFallback;
 
-      const composedNote = [
-        reflectionLines.length ? reflectionLines.join("\n") : null,
-        note.trim() ? note.trim() : null,
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+      const composedNote = note.trim() ? note.trim() : null;
 
       const normalizedVisibility: VisibilitySettings = {
         ...visibility,
@@ -280,8 +324,11 @@ export default function LogMoodScreen() {
           reasonSummary: summaryForSubmit,
           note: composedNote || null,
           loggedAt: new Date().toISOString(),
-          categories: selectedCategories,
           visibility: normalizedVisibility,
+          freedomChoice,
+          supportChoice,
+          energyChoice,
+          pridePercent: prideValue,
         });
       } else {
         await createMoodEntry({
@@ -291,9 +338,12 @@ export default function LogMoodScreen() {
           reasonSummary: summaryForSubmit,
           note: composedNote || null,
           loggedAt: new Date().toISOString(),
-          categories: selectedCategories,
           visibility: normalizedVisibility,
           userId: user.id,
+          freedomChoice,
+          supportChoice,
+          energyChoice,
+          pridePercent: prideValue,
         });
       }
 
@@ -303,12 +353,10 @@ export default function LogMoodScreen() {
           : "Ton humeur a été prise en compte pour aujourd’hui.",
       });
 
-      setSelectedCategories([]);
-      setReasonSummary("");
       setNote("");
       setIsAnonymous(false);
       setMoodValue(4);
-      setVisibility(DEFAULT_VISIBILITY);
+      syncVisibility(() => DEFAULT_VISIBILITY);
       setFreedomChoice(null);
       setSupportChoice(null);
       setEnergyChoice(null);
@@ -345,16 +393,124 @@ export default function LogMoodScreen() {
     moodValue,
     note,
     prideValue,
-    reasonSummary,
+    freedomChoice,
+    supportChoice,
+    energyChoice,
     router,
-    selectedCategories,
     selectedEnergy,
     selectedFreedom,
     selectedSupport,
     visibility,
     toast,
+    syncVisibility,
     user?.id,
   ]);
+
+  const handleOpenConfig = useCallback(() => {
+    if (!canOpenConfig) {
+      toast.show("Complète tes ressentis", {
+        description: "Sélectionne une option dans chaque carte avant de continuer.",
+      });
+      return;
+    }
+    setConfigOpen(true);
+  }, [canOpenConfig, toast]);
+
+  const closeConfig = useCallback(() => {
+    if (!isSubmitting) {
+      setConfigOpen(false);
+    }
+  }, [isSubmitting]);
+
+  if (isConfigOpen) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.flex}
+        >
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.navRow}>
+              <Pressable
+                onPress={closeConfig}
+                style={styles.backButton}
+                accessibilityRole="button"
+              >
+                <Text style={styles.backLabel}>←</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.headerBlock}>
+              <Text style={styles.title}>Configurer la publication</Text>
+              <Text style={styles.subtitle}>
+                Ajuste qui peut voir ton humeur aujourd’hui.
+              </Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Ton récapitulatif</Text>
+              <Text style={styles.summaryMoodLine}>
+                {moodOption?.emoji ?? "🙂"}{" "}
+                {moodOption?.title ?? "Mood non renseigné"}
+              </Text>
+              <Text style={styles.summaryMoodSubtitle}>
+                Contexte : {CONTEXT_LABEL[context]}
+              </Text>
+              {reflectionSummary.length ? (
+                <View style={styles.summaryPills}>
+                  {reflectionSummary.map((line, index) => (
+                    <View key={index} style={styles.summaryPill}>
+                      <Text style={styles.summaryPillText}>{line}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.cardHint}>
+                  Ajoute des ressentis sur l’écran précédent pour enrichir ton
+                  mood.
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <VisibilityForm
+                value={visibility}
+                onChange={handleVisibilityChange}
+                showHrSection={false}
+                variant="plain"
+                showAnonymityToggle
+                isAnonymous={isAnonymous}
+                onAnonymousChange={handleAnonymousChange}
+              />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        <View style={styles.bottomBar}>
+          <Button
+            theme="accent"
+            size="$5"
+            disabled={isSubmitting}
+            onPress={() => {
+              if (!isSubmitting) {
+                void handleSubmit();
+              }
+            }}
+          >
+            {isSubmitting
+              ? "Enregistrement..."
+              : editingId
+              ? "Mettre à jour et publier"
+              : "Publier mon mood"}
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -440,6 +596,23 @@ export default function LogMoodScreen() {
             <Text style={styles.reflectionMessage}>{prideLabel}</Text>
           </View>
 
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Notes (optionnel)</Text>
+            <Text style={styles.cardHint}>
+              Ajoute un détail utile ou une anecdote à retenir.
+            </Text>
+            <Input
+              value={note}
+              onChangeText={setNote}
+              placeholder="Partage un petit mot sur ta journée..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+              style={styles.textArea}
+            />
+          </View>
+
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -448,150 +621,17 @@ export default function LogMoodScreen() {
         <Button
           size="$5"
           theme="accent"
-          onPress={openConfig}
-          disabled={isSubmitting}
+          onPress={handleOpenConfig}
+          disabled={isSubmitting || !canOpenConfig}
         >
           Configurer mon mood
         </Button>
+        {!canOpenConfig ? (
+          <Text style={styles.bottomHint}>
+            Sélectionne une option dans chaque carte avant de continuer.
+          </Text>
+        ) : null}
       </View>
-
-      <Modal
-        visible={isConfigOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={closeConfig}
-      >
-        <View style={styles.configOverlay}>
-          <Pressable
-            style={styles.configBackdrop}
-            onPress={closeConfig}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-          />
-          <View style={styles.configSheet}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.configHeader}>
-              <Text style={styles.configTitle}>Paramètres avancés</Text>
-              <Pressable
-                onPress={closeConfig}
-                disabled={isSubmitting}
-                accessibilityRole="button"
-              >
-                <Text style={styles.configClose}>Fermer</Text>
-              </Pressable>
-            </View>
-            <ScrollView
-              contentContainerStyle={styles.configContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Ton récapitulatif</Text>
-                <Text style={styles.summaryMoodLine}>
-                  {moodOption?.emoji ?? "🙂"}{" "}
-                  {moodOption?.title ?? "Mood non renseigné"}
-                </Text>
-                <Text style={styles.summaryMoodSubtitle}>
-                  Contexte : {CONTEXT_LABEL[context]}
-                </Text>
-                {reflectionSummary.length ? (
-                  <View style={styles.summaryPills}>
-                    {reflectionSummary.map((line, index) => (
-                      <View key={index} style={styles.summaryPill}>
-                        <Text style={styles.summaryPillText}>{line}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.cardHint}>
-                    Ajoute des ressentis sur l’écran précédent pour enrichir ton
-                    mood.
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.card}>
-                <View style={styles.configRow}>
-                  <Text style={styles.cardTitle}>Rester anonyme ?</Text>
-                  <TamSwitch
-                    size="$3"
-                    checked={isAnonymous}
-                    onCheckedChange={(value) => setIsAnonymous(Boolean(value))}
-                  >
-                    <TamSwitch.Thumb animation="lazy" />
-                  </TamSwitch>
-                </View>
-                <Text style={styles.cardHint}>
-                  Ton emoji restera visible, seul ton nom peut être masqué.
-                </Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.fieldLabel}>Catégories (optionnel)</Text>
-                <CategoryPicker
-                  categories={categories}
-                  selected={selectedCategories}
-                  onChange={setSelectedCategories}
-                />
-                {isLoadingCategories ? (
-                  <Text style={styles.cardHint}>
-                    Chargement des catégories...
-                  </Text>
-                ) : null}
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.fieldLabel}>Résumé (optionnel)</Text>
-                <Input
-                  value={reasonSummary}
-                  onChangeText={setReasonSummary}
-                  placeholder="Ajoute une courte phrase pour contextualiser."
-                  placeholderTextColor="#94A3B8"
-                />
-                <Text style={styles.fieldLabel}>Notes (optionnel)</Text>
-                <Input
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Ajoute quelques détails utiles..."
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  numberOfLines={5}
-                  textAlignVertical="top"
-                  style={styles.textArea}
-                />
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.fieldLabel}>Visibilité</Text>
-                <VisibilityForm
-                  value={visibility}
-                  onChange={setVisibility}
-                  showHrSection={false}
-                  variant="plain"
-                />
-              </View>
-            </ScrollView>
-
-            <View style={styles.configActions}>
-              <Button
-                theme="accent"
-                size="$5"
-                disabled={isSubmitting}
-                onPress={() => {
-                  if (!isSubmitting) {
-                    void handleSubmit();
-                  }
-                }}
-              >
-                {isSubmitting
-                  ? "Enregistrement..."
-                  : editingId
-                  ? "Mettre à jour et publier"
-                  : "Publier mon mood"}
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -653,10 +693,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0, 0, 0, 0.06)",
     shadowColor: "#000000",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   fieldLabel: {
     fontSize: 15,
@@ -687,8 +727,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     shadowColor: "#000000",
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 1.5,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
@@ -711,9 +751,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0, 0, 0, 0.08)",
+    gap: 8,
   },
   bottomSpacer: {
     height: 40,
+  },
+  bottomHint: {
+    fontSize: 12,
+    color: Palette.textSecondary,
+    textAlign: "center",
   },
   textArea: {
     minHeight: 120,

@@ -10,6 +10,9 @@ type VisibilityFormProps = {
   onChange: (nextValue: VisibilitySettings) => void;
   showHrSection?: boolean;
   variant?: 'default' | 'plain';
+  showAnonymityToggle?: boolean;
+  isAnonymous?: boolean;
+  onAnonymousChange?: (next: boolean) => void;
 };
 
 const LEVELS: VisibilityLevel[] = ['hidden', 'anonymized', 'visible'];
@@ -20,7 +23,15 @@ const levelLabel: Record<VisibilityLevel, string> = {
   visible: 'Visible',
 };
 
-export const VisibilityForm = ({ value, onChange, showHrSection = true, variant = 'default' }: VisibilityFormProps) => {
+export const VisibilityForm = ({
+  value,
+  onChange,
+  showHrSection = true,
+  variant = 'default',
+  showAnonymityToggle = false,
+  isAnonymous = false,
+  onAnonymousChange,
+}: VisibilityFormProps) => {
   const peerCaption = useMemo(() => {
     switch (value.showReasonToPeers) {
       case 'hidden':
@@ -41,47 +52,87 @@ export const VisibilityForm = ({ value, onChange, showHrSection = true, variant 
     });
   };
 
+  const showAudienceControls = !value.shareMoodWithAll;
+
   return (
     <View style={[styles.container, variant === 'plain' && styles.containerPlain]}>
       <View style={styles.row}>
         <Text style={styles.title}>Partage global</Text>
         <Switch
           value={value.shareMoodWithAll}
-          onValueChange={(shareMoodWithAll) => onChange({ ...value, shareMoodWithAll })}
+          onValueChange={(shareMoodWithAll) => {
+            onChange({ ...value, shareMoodWithAll });
+            if (shareMoodWithAll && onAnonymousChange) {
+              onAnonymousChange(false);
+            }
+          }}
         />
       </View>
       <Text style={styles.subtitle}>Contrôle la visibilité de ta raison selon le public.</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pour les collègues</Text>
-        <View style={styles.levelRow}>
-          {LEVELS.map((level) => (
-            <Chip
-              key={level}
-              label={levelLabel[level]}
-              selected={value.showReasonToPeers === level}
-              onPress={() => handleLevelChange('showReasonToPeers', level)}
-            />
-          ))}
+      {showAnonymityToggle && showAudienceControls ? (
+        <View style={styles.row}>
+          <Text style={styles.title}>Rester anonyme ?</Text>
+          <Switch
+            value={Boolean(isAnonymous)}
+            onValueChange={(next) => {
+              onAnonymousChange?.(next);
+              if (next) {
+                onChange({
+                  ...value,
+                  showReasonToPeers: 'anonymized',
+                  showReasonToManagers: 'anonymized',
+                });
+              }
+            }}
+          />
         </View>
-        <Text style={styles.caption}>{peerCaption}</Text>
-      </View>
+      ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pour ton manager</Text>
-        <View style={styles.levelRow}>
-          {LEVELS.map((level) => (
-            <Chip
-              key={level}
-              label={levelLabel[level]}
-              selected={value.showReasonToManagers === level}
-              onPress={() => handleLevelChange('showReasonToManagers', level)}
-            />
-          ))}
-        </View>
-      </View>
+      {showAudienceControls ? (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pour les collègues</Text>
+            <View style={styles.levelRow}>
+              {LEVELS.map((level) => (
+                <Chip
+                  key={level}
+                  label={levelLabel[level]}
+                  selected={value.showReasonToPeers === level}
+                  onPress={() => {
+                    if (level !== 'anonymized') {
+                      onAnonymousChange?.(false);
+                    }
+                    handleLevelChange('showReasonToPeers', level);
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={styles.caption}>{peerCaption}</Text>
+          </View>
 
-      {showHrSection ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pour ton manager</Text>
+            <View style={styles.levelRow}>
+              {LEVELS.map((level) => (
+                <Chip
+                  key={level}
+                  label={levelLabel[level]}
+                  selected={value.showReasonToManagers === level}
+                  onPress={() => {
+                    if (level !== 'anonymized') {
+                      onAnonymousChange?.(false);
+                    }
+                    handleLevelChange('showReasonToManagers', level);
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        </>
+      ) : null}
+
+      {showHrSection && showAudienceControls ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pour la RH</Text>
           <View style={styles.levelRow}>
