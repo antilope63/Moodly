@@ -109,18 +109,18 @@ export const MoodPublisherCard = ({ onOpenForm }: MoodPublisherCardProps) => {
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Ton mood</Text>
-        {todayMood ? (
-          <Pressable
-            onPress={handleEdit}
-            style={({ pressed }) => [
-              styles.editButton,
-              pressed && styles.editButtonPressed,
-            ]}
-            accessibilityRole="button"
-          >
-            <Text style={styles.editButtonLabel}>Modifier</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          onPress={todayMood ? handleEdit : () => handleOpenMoodForm()}
+          style={({ pressed }) => [
+            styles.editButton,
+            pressed && styles.editButtonPressed,
+          ]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.editButtonLabel}>
+            {todayMood ? "Modifier" : "Ajouter"}
+          </Text>
+        </Pressable>
       </View>
 
       {todayMood ? (
@@ -197,10 +197,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0, 0, 0, 0.05)",
     shadowColor: "#000000",
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 1.5,
     shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
+    elevation: 1,
   },
   title: {
     fontSize: 18,
@@ -258,26 +258,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#7A7894",
   },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0, 0, 0, 0.08)",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOpacity: 0.15,
-    shadowRadius: 1.5,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  editButtonPressed: {
-    opacity: 0.85,
-  },
+  editButton: {},
+  editButtonPressed: { opacity: 0.7 },
   editButtonLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: Palette.textPrimary,
+    color: Palette.bleuMarin,
   },
   publishedCard: {
     flexDirection: "row",
@@ -316,7 +302,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0, 0, 0, 0.05)",
     backgroundColor: "#FFFFFF",
     shadowColor: "#000000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 1.5,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
