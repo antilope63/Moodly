@@ -349,8 +349,6 @@ export function ProfileDashboard({
   const [teamIdToMembers, setTeamIdToMembers] = useState<
     Record<number, TeamMember[]>
   >({});
-  const [pickerStep, setPickerStep] = useState<1 | 2>(1);
-  const [pickerTeamId, setPickerTeamId] = useState<number | null>(null);
   const [managedTeamsError, setManagedTeamsError] = useState<string | null>(
     null
   );
@@ -493,40 +491,6 @@ export function ProfileDashboard({
     void loadAllMembers();
   }, [isManager, managedTeams, teamIdToMembers]);
 
-  const currentViewerLabel = useMemo(() => {
-    if (scope === "team") {
-      if (managedTeams.length === 1) {
-        return `équipe ${managedTeams[0].name}`;
-      }
-      if (managedTeams.length > 1) {
-        return "toutes mes équipes";
-      }
-      return summary?.team?.name
-        ? `équipe ${summary.team.name}`
-        : "toute l'équipe";
-    }
-    if (scope === "me") {
-      return summary?.username ?? user?.username ?? "moi";
-    }
-    const list: TeamMember[] = selectedTeamId
-      ? teamIdToMembers[selectedTeamId] ?? []
-      : [];
-    const found = list.find((m) => m.id === targetUserId);
-    return (
-      found?.label ??
-      (targetUserId
-        ? `Utilisateur ${String(targetUserId).slice(0, 8)}`
-        : "utilisateur")
-    );
-  }, [
-    scope,
-    summary?.team?.name,
-    user?.username,
-    selectedTeamId,
-    teamIdToMembers,
-    targetUserId,
-  ]);
-
   const openScopePicker = useCallback(() => {
     setScopePickerVisible(true);
   }, []);
@@ -546,30 +510,74 @@ export function ProfileDashboard({
 
   const managerUserPills = useMemo<ManagerPillOption[]>(() => {
     if (!isManager) return [];
-    const uniqueMembers = new Map<string, { member: TeamMember; teamId: number }>();
-    managedTeams.forEach((team) => {
-      const members = teamIdToMembers[team.id] ?? [];
+
+    const targetTeamIds: number[] = [];
+    if ((scope === "team" || scope === "user") && selectedTeamId != null) {
+      targetTeamIds.push(selectedTeamId);
+    }
+    if (
+      targetTeamIds.length === 0 &&
+      selectedTeamId != null &&
+      !targetTeamIds.includes(selectedTeamId)
+    ) {
+      targetTeamIds.push(selectedTeamId);
+    }
+    if (targetTeamIds.length === 0 && managedTeams.length === 1) {
+      targetTeamIds.push(managedTeams[0].id);
+    }
+    if (targetTeamIds.length === 0 && managedTeams.length > 1) {
+      targetTeamIds.push(...managedTeams.map((team) => team.id));
+    }
+
+    const seenMembers = new Set<string>();
+    const memberPills: ManagerPillOption[] = [];
+    targetTeamIds.forEach((teamId) => {
+      const members = teamIdToMembers[teamId] ?? [];
       members.forEach((member) => {
-        if (!uniqueMembers.has(member.id)) {
-          uniqueMembers.set(member.id, { member, teamId: team.id });
-        }
+        if (seenMembers.has(member.id)) return;
+        seenMembers.add(member.id);
+        memberPills.push({
+          key: `${teamId}:${member.id}`,
+          label: member.label,
+          userId: member.id,
+          teamId,
+          type: "user",
+        });
       });
     });
-    const members = Array.from(uniqueMembers.values())
-      .map(({ member, teamId }) => ({
-        key: `${teamId}:${member.id}`,
-        label: member.label,
-        userId: member.id,
-        teamId,
-        type: "user" as const,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+
+    memberPills.sort((a, b) => a.label.localeCompare(b.label));
 
     return [
       { key: "self", label: managerSelfLabel, type: "me" as const },
-      ...members,
+      ...memberPills,
     ];
-  }, [isManager, managedTeams, teamIdToMembers, managerSelfLabel]);
+  }, [
+    isManager,
+    managedTeams,
+    teamIdToMembers,
+    managerSelfLabel,
+    scope,
+    selectedTeamId,
+  ]);
+
+  const managerSelectedTeamName = useMemo(() => {
+    if (!isManager) return null;
+
+    const fallbackTeamFromSummary = summary?.team?.name ?? null;
+    if (selectedTeamId != null) {
+      const selectedTeam = managedTeams.find((team) => team.id === selectedTeamId);
+      if (selectedTeam) {
+        return selectedTeam.name;
+      }
+    }
+
+    if (managedTeams.length === 1) {
+      return managedTeams[0]?.name ?? null;
+    }
+
+    return fallbackTeamFromSummary;
+  }, [isManager, managedTeams, selectedTeamId, summary?.team?.name]);
 
   const handleSelectManagerPill = useCallback(
     (option: ManagerPillOption) => {
@@ -577,15 +585,11 @@ export function ProfileDashboard({
         setScope("me");
         setSelectedTeamId(null);
         setTargetUserId(null);
-        setPickerStep(1);
-        setPickerTeamId(null);
         return;
       }
       setScope("user");
       setSelectedTeamId(option.teamId);
       setTargetUserId(option.userId);
-      setPickerStep(1);
-      setPickerTeamId(null);
     },
     []
   );
@@ -693,16 +697,10 @@ export function ProfileDashboard({
             {isManager ? (
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Text style={{ color: theme.colors.subtleLight, flex: 1 }}>
-                    Données de :{" "}
-                    <Text
-                      style={{
-                        color: theme.colors.foregroundLight,
-                        fontWeight: "700",
-                      }}
-                    >
-                      {currentViewerLabel}
-                    </Text>
+                  <Text style={styles.managerContextText}>
+                    {managerSelectedTeamName
+                      ? `Données de l'équipe ${managerSelectedTeamName}`
+                      : "Sélectionnez une équipe"}
                   </Text>
                   <Pressable onPress={openScopePicker}>
                     <Text style={styles.seeAllText}>Changer</Text>
@@ -1008,105 +1006,49 @@ export function ProfileDashboard({
             <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
-                {pickerStep === 1
-                  ? "De qui voulez-vous voir les données ?"
-                  : "De quel employé voulez-vous voir les données ?"}
+                Choisissez la vue à afficher
               </Text>
               <Pressable onPress={closeScopePicker}>
                 <Text style={styles.modalCloseButton}>Fermer</Text>
               </Pressable>
             </View>
-            <View style={{ gap: 8, paddingBottom: 44 }}>
-              {pickerStep === 1 ? (
-                <>
+            <View style={styles.modalOptionList}>
+              <Pressable
+                style={[
+                  styles.timelineItem,
+                  scope === "me" ? styles.timelineItemActive : null,
+                ]}
+                onPress={() => {
+                  setScope("me");
+                  setSelectedTeamId(null);
+                  setTargetUserId(null);
+                  closeScopePicker();
+                }}
+              >
+                <Text style={styles.timelineMood}>
+                  Moi ({summary?.username ?? user?.username ?? "—"})
+                </Text>
+              </Pressable>
+              {managedTeams.map((team) => {
+                const isActive = selectedTeamId === team.id && scope !== "me";
+                return (
                   <Pressable
-                    style={styles.timelineItem}
-                    onPress={() => {
-                      setScope("me");
-                      setSelectedTeamId(null);
-                      setTargetUserId(null);
-                      setPickerStep(1);
-                      closeScopePicker();
-                    }}
-                  >
-                    <Text style={styles.timelineMood}>
-                      Moi ({summary?.username ?? user?.username ?? "—"})
-                    </Text>
-                  </Pressable>
-                  {managedTeams.map((t) => (
-                    <Pressable
-                      key={t.id}
-                      style={styles.timelineItem}
-                      onPress={async () => {
-                        setPickerTeamId(t.id);
-                        if (!teamIdToMembers[t.id]) {
-                          try {
-                            const list = await fetchTeamMembers(t.id, {
-                              excludeUserId: user?.id ?? undefined,
-                            });
-                            setTeamIdToMembers((prev) => ({
-                              ...prev,
-                              [t.id]: list,
-                            }));
-                          } catch {
-                            setTeamIdToMembers((prev) => ({
-                              ...prev,
-                              [t.id]: [],
-                            }));
-                          }
-                        }
-                        setPickerStep(2);
-                      }}
-                    >
-                      <Text style={styles.timelineMood}>Équipe {t.name}</Text>
-                    </Pressable>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    style={styles.timelineItem}
+                    key={team.id}
+                    style={[
+                      styles.timelineItem,
+                      isActive ? styles.timelineItemActive : null,
+                    ]}
                     onPress={() => {
                       setScope("team");
-                      setSelectedTeamId(pickerTeamId);
+                      setSelectedTeamId(team.id);
                       setTargetUserId(null);
-                      setPickerStep(1);
-                      setPickerTeamId(null);
                       closeScopePicker();
                     }}
                   >
-                    <Text style={styles.timelineMood}>Toute l'équipe</Text>
+                    <Text style={styles.timelineMood}>Équipe {team.name}</Text>
                   </Pressable>
-                  {(pickerTeamId
-                    ? teamIdToMembers[pickerTeamId] ?? []
-                    : []
-                  ).map((m) => (
-                    <Pressable
-                      key={m.id}
-                      style={styles.timelineItem}
-                      onPress={() => {
-                        setScope("user");
-                        setSelectedTeamId(pickerTeamId);
-                        setTargetUserId(m.id);
-                        setPickerStep(1);
-                        setPickerTeamId(null);
-                        closeScopePicker();
-                      }}
-                    >
-                      <Text style={styles.timelineMood}>{m.label}</Text>
-                    </Pressable>
-                  ))}
-                  <Pressable
-                    style={[styles.timelineItem, { justifyContent: "center" }]}
-                    onPress={() => {
-                      setPickerStep(1);
-                      setPickerTeamId(null);
-                    }}
-                  >
-                    <Text style={styles.timelineMood}>← Retour</Text>
-                  </Pressable>
-                </>
-              )}
+                );
+              })}
             </View>
           </Animated.View>
         </View>
@@ -1218,6 +1160,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   managerPillTextActive: { color: "white" },
+  managerContextText: {
+    flex: 1,
+    color: theme.colors.foregroundLight,
+    fontSize: 14,
+    fontWeight: "600",
+  },
   cardHeader: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -1265,6 +1213,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     backgroundColor: theme.colors.backgroundLight,
+  },
+  timelineItemActive: {
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: "rgba(75, 147, 242, 0.08)",
   },
   timelineItemPressed: {
     opacity: 0.85,
@@ -1345,6 +1298,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.primary,
     fontWeight: "600",
+  },
+  modalOptionList: {
+    gap: 8,
+    paddingBottom: 44,
   },
   historyOverlay: {
     flex: 1,
