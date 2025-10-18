@@ -416,6 +416,8 @@ export type ProfileSummary = {
   role?: RoleType | null;
   team?: TeamSummary | null;
   moodsCount: number;
+  username?: string | null;
+  email?: string | null;
 };
 
 export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
@@ -468,10 +470,25 @@ export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
     };
   }
 
+  // Récupère le username/email depuis la table profiles
+  let username: string | null = null;
+  let email: string | null = authData.user.email ?? null;
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('id, username, email')
+    .eq('id', authData.user.id)
+    .maybeSingle();
+  if (profileRow) {
+    username = (profileRow.username as string | null) ?? null;
+    email = (profileRow.email as string | null) ?? email;
+  }
+
   return {
     role,
     team,
     moodsCount: count ?? 0,
+    username,
+    email,
   };
 };
 

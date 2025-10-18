@@ -346,7 +346,9 @@ export function ProfileDashboard({
           await Promise.all(
             missingTeamIds.map(async (teamId) => {
               try {
-                const list = await fetchTeamMembers(teamId);
+                const list = await fetchTeamMembers(teamId, {
+                  excludeUserId: user?.id ?? undefined,
+                });
                 return [teamId, list] as const;
               } catch {
                 return [teamId, [] as TeamMember[]] as const;
@@ -380,7 +382,7 @@ export function ProfileDashboard({
         : "toute l'équipe";
     }
     if (scope === "me") {
-      return user?.username ?? "moi";
+      return summary?.username ?? user?.username ?? "moi";
     }
     const list: TeamMember[] = selectedTeamId
       ? teamIdToMembers[selectedTeamId] ?? []
@@ -419,70 +421,26 @@ export function ProfileDashboard({
           <Text style={styles.errorText}>Erreur: {error.message}</Text>
         ) : (
           <>
-            {isManager ? (
-              <View style={styles.card}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.cardTitlePrimary}>Vue manager</Text>
-                  <Pressable onPress={openScopePicker}>
-                    <Text style={styles.seeAllText}>Changer</Text>
-                  </Pressable>
-                </View>
-                <Text style={{ color: theme.colors.subtleLight }}>
-                  Vous voyez actuellement les données de :{" "}
-                  <Text
-                    style={{
-                      color: theme.colors.foregroundLight,
-                      fontWeight: "700",
-                    }}
-                  >
-                    {currentViewerLabel}
-                  </Text>
-                </Text>
-                <View style={styles.debugBanner}>
-                  <Text style={styles.debugTitle}>Debug équipes</Text>
-                  <Text style={styles.debugMessage}>
-                    uuid: {user?.id} • équipes: {managedTeams.length}
-                    {managedTeamsError ? ` • erreur: ${managedTeamsError}` : ""}
-                  </Text>
-                  <View style={{ gap: 4 }}>
-                    {managedTeams.map((t) => {
-                      const list = teamIdToMembers[t.id] ?? [];
-                      return (
-                        <View key={t.id}>
-                          <Text style={styles.debugTitle}>
-                            Équipe {t.name || "—"} ({list.length})
-                          </Text>
-                          {list.length > 0 ? (
-                            list.map((m) => (
-                              <Text key={m.id} style={styles.debugMessage}>
-                                - {m.label}
-                              </Text>
-                            ))
-                          ) : (
-                            <Text style={styles.debugMessage}>
-                              - aucun membre trouvé
-                            </Text>
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              </View>
-            ) : null}
+            {isManager ? null : null}
+
+            <Text style={styles.headline}>Profil</Text>
 
             <View style={styles.card}>
               <View style={styles.profileHeader}>
                 <UserAvatar
-                  name={user?.username || "?"}
+                  name={summary?.username || user?.username || "?"}
                   size={50}
                   style={styles.avatar}
                 />
                 <View style={styles.userInfo}>
-                  <Text style={styles.username}>{user?.username}</Text>
-                  <Text style={styles.email}>{user?.email}</Text>
+                  <Text style={styles.username}>
+                    {summary?.username ?? user?.username}
+                  </Text>
+                  <Text style={styles.email}>
+                    {summary?.email ?? user?.email}
+                  </Text>
                   <Text style={styles.role}>
-                    {user?.rawRole ?? "Aucun rôle connu"}
+                    {summary?.roleLabel ?? user?.rawRole ?? "Aucun rôle connu"}
                   </Text>
                 </View>
                 <Pressable onPress={handleLogout} style={styles.logoutButton}>
@@ -495,6 +453,45 @@ export function ProfileDashboard({
               </View>
             </View>
 
+            <Text style={styles.headline}>Données</Text>
+
+            {isManager ? (
+              <View style={styles.card}>
+                <View style={styles.sectionHeader}>
+                  <Text style={{ color: theme.colors.subtleLight, flex: 1 }}>
+                    Données de :{" "}
+                    <Text
+                      style={{
+                        color: theme.colors.foregroundLight,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {currentViewerLabel}
+                    </Text>
+                  </Text>
+                  <Pressable onPress={openScopePicker}>
+                    <Text style={styles.seeAllText}>Changer</Text>
+                  </Pressable>
+                </View>
+                {/* Debug view désactivée */}
+              </View>
+            ) : null}
+
+            <View style={styles.card}>
+              <Text style={[styles.cardTitlePrimary, { marginBottom: 16 }]}>
+                Statistiques
+              </Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{statsData.averageMood}</Text>
+                  <Text style={styles.statLabel}>Mood moyen</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{statsData.positiveDays}</Text>
+                  <Text style={styles.statLabel}>Jours positifs</Text>
+                </View>
+              </View>
+            </View>
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitlePrimary}>Mood Evolution</Text>
@@ -532,7 +529,9 @@ export function ProfileDashboard({
 
             <View style={styles.card}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.cardTitlePrimary}>Derniers logs</Text>
+                <Text style={styles.cardTitlePrimary}>
+                  Historique des moods
+                </Text>
                 <Pressable onPress={openHistoryModal}>
                   <Text style={styles.seeAllText}>Voir tout</Text>
                 </Pressable>
@@ -541,22 +540,6 @@ export function ProfileDashboard({
                 {historyItems.slice(0, 2).map((item) => (
                   <TimelineItem key={item.id} item={item} />
                 ))}
-              </View>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={[styles.cardTitlePrimary, { marginBottom: 16 }]}>
-                Statistiques rapides
-              </Text>
-              <View style={styles.statsGrid}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{statsData.averageMood}</Text>
-                  <Text style={styles.statLabel}>Mood moyen</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{statsData.positiveDays}</Text>
-                  <Text style={styles.statLabel}>Jours positifs</Text>
-                </View>
               </View>
             </View>
           </>
@@ -653,9 +636,7 @@ export function ProfileDashboard({
 
                   {selectedHistoryItem.categories?.length ? (
                     <View style={styles.historySection}>
-                      <Text style={styles.historySectionTitle}>
-                        Catégories
-                      </Text>
+                      <Text style={styles.historySectionTitle}>Catégories</Text>
                       <View style={styles.historyTagRow}>
                         {selectedHistoryItem.categories.map((category) => (
                           <View key={category.id} style={styles.historyTag}>
@@ -710,8 +691,8 @@ export function ProfileDashboard({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {pickerStep === 1
-                  ? "Choisir l'équipe ou moi"
-                  : "Choisir les données à voir"}
+                  ? "De qui voulez-vous voir les données ?"
+                  : "De quel employé voulez-vous voir les données ?"}
               </Text>
               <Pressable onPress={closeScopePicker}>
                 <Text style={styles.modalCloseButton}>Fermer</Text>
@@ -731,7 +712,7 @@ export function ProfileDashboard({
                     }}
                   >
                     <Text style={styles.timelineMood}>
-                      Moi ({user?.username ?? "—"})
+                      Moi ({summary?.username ?? user?.username ?? "—"})
                     </Text>
                   </Pressable>
                   {managedTeams.map((t) => (
@@ -742,7 +723,9 @@ export function ProfileDashboard({
                         setPickerTeamId(t.id);
                         if (!teamIdToMembers[t.id]) {
                           try {
-                            const list = await fetchTeamMembers(t.id);
+                            const list = await fetchTeamMembers(t.id, {
+                              excludeUserId: user?.id ?? undefined,
+                            });
                             setTeamIdToMembers((prev) => ({
                               ...prev,
                               [t.id]: list,
@@ -825,6 +808,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   mainContent: { padding: 16, gap: 16 },
+  headline: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: theme.colors.foregroundLight,
+  },
   card: {
     backgroundColor: "white",
     borderRadius: 16,
@@ -911,7 +899,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 0,
   },
   seeAllText: { color: theme.colors.primary, fontSize: 14, fontWeight: "600" },
   timelineContainer: { gap: 8 },
