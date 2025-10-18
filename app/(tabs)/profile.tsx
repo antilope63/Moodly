@@ -9,10 +9,18 @@ import type { MoodEntry } from "@/types/mood";
 import { format, isSameDay, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Easing,
   FlatList,
   Modal,
   Pressable,
@@ -301,7 +309,7 @@ export function ProfileDashboard({
     user?.role === "admin" ||
     user?.rawRole === "manager" ||
     user?.rawRole === "admin";
-  const defaultScope: "me" | "team" | "user" = isManager ? "team" : "me";
+  const defaultScope: "me" | "team" | "user" = "me";
   const [scope, setScope] = useState<"me" | "team" | "user">(defaultScope);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const [managedTeams, setManagedTeams] = useState<ManagedTeam[]>([]);
@@ -334,15 +342,42 @@ export function ProfileDashboard({
     useState<MoodEntry | null>(null);
   const periods = ["Semaine", "Mois"];
 
+  // Animations bottom sheet (histoire + scope picker)
+  const historySheetTranslateY = useRef(new Animated.Value(300)).current;
+  const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
+
   const openHistoryModal = useCallback(() => {
     setSelectedHistoryItem(null);
     setHistoryModalVisible(true);
+    Animated.timing(historySheetTranslateY, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const closeHistoryModal = useCallback(() => {
     setSelectedHistoryItem(null);
-    setHistoryModalVisible(false);
+    Animated.timing(historySheetTranslateY, {
+      toValue: 300,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setHistoryModalVisible(false));
   }, []);
+
+  useEffect(() => {
+    if (!isScopePickerVisible) return;
+    scopeSheetTranslateY.setValue(300);
+    Animated.timing(scopeSheetTranslateY, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScopePickerVisible]);
 
   const handleLogout = () => {
     logout();
@@ -456,8 +491,17 @@ export function ProfileDashboard({
     targetUserId,
   ]);
 
-  const openScopePicker = () => setScopePickerVisible(true);
-  const closeScopePicker = () => setScopePickerVisible(false);
+  const openScopePicker = useCallback(() => {
+    setScopePickerVisible(true);
+  }, []);
+  const closeScopePicker = useCallback(() => {
+    Animated.timing(scopeSheetTranslateY, {
+      toValue: 300,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setScopePickerVisible(false));
+  }, [scopeSheetTranslateY]);
 
   const Container = embedded ? View : SafeAreaView;
 
@@ -600,7 +644,7 @@ export function ProfileDashboard({
       </ScrollView>
 
       <Modal
-        animationType="slide"
+        animationType="none"
         transparent
         visible={isHistoryModalVisible}
         onRequestClose={closeHistoryModal}
@@ -612,7 +656,12 @@ export function ProfileDashboard({
             accessibilityRole="button"
           />
 
-          <View style={styles.historySheet}>
+          <Animated.View
+            style={[
+              styles.historySheet,
+              { transform: [{ translateY: historySheetTranslateY }] },
+            ]}
+          >
             <View style={styles.sheetHandle} />
 
             {selectedHistoryItem ? (
@@ -729,7 +778,7 @@ export function ProfileDashboard({
                 />
               </>
             )}
-          </View>
+          </Animated.View>
         </View>
       </Modal>
       {/* Sélecteur de portée */}
@@ -739,10 +788,22 @@ export function ProfileDashboard({
         visible={isScopePickerVisible}
         onRequestClose={closeScopePicker}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={styles.historyOverlay}>
+          <Pressable
+            style={styles.historyBackdrop}
+            onPress={closeScopePicker}
+            accessibilityRole="button"
+          />
+
+          <Animated.View
+            style={[
+              styles.historySheet,
+              { transform: [{ translateY: scopeSheetTranslateY }] },
+            ]}
+          >
+            <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
+              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
                 {pickerStep === 1
                   ? "De qui voulez-vous voir les données ?"
                   : "De quel employé voulez-vous voir les données ?"}
@@ -843,7 +904,7 @@ export function ProfileDashboard({
                 </>
               )}
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </Container>
