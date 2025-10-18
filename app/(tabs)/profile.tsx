@@ -709,45 +709,6 @@ export function ProfileDashboard({
                   </Pressable>
                 </View>
                 {/* Debug view désactivée */}
-                {showManagerPills ? (
-                  <ScrollView
-                    horizontal
-                    style={styles.managerPillScroll}
-                    contentContainerStyle={styles.managerPillContent}
-                    showsHorizontalScrollIndicator={false}
-                  >
-                    {managerUserPills.map((option) => {
-                      const active = isPillActive(option);
-                      return (
-                        <Pressable
-                          key={option.key}
-                          onPress={() => handleSelectManagerPill(option)}
-                          style={[
-                            styles.managerPill,
-                            active
-                              ? styles.managerPillActive
-                              : styles.managerPillInactive,
-                          ]}
-                        >
-                          <UserAvatar
-                            name={option.label}
-                            size={28}
-                            style={styles.managerPillAvatar}
-                          />
-                          <Text
-                            style={[
-                              styles.managerPillText,
-                              active && styles.managerPillTextActive,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {option.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                ) : null}
               </View>
             ) : null}
 
@@ -799,6 +760,49 @@ export function ProfileDashboard({
                 data={historyItems}
                 activePeriod={activePeriod}
               />
+              {showManagerPills ? (
+                <View style={styles.managerPillSection}>
+                  <Text style={styles.managerPillLabel}>Voir les données de</Text>
+                  <ScrollView
+                    horizontal
+                    style={styles.managerPillScroll}
+                    contentContainerStyle={styles.managerPillContent}
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    {managerUserPills.map((option) => {
+                      const active = isPillActive(option);
+                      return (
+                        <Pressable
+                          key={option.key}
+                          onPress={() => handleSelectManagerPill(option)}
+                          style={[
+                            styles.managerPill,
+                            active
+                              ? styles.managerPillActive
+                              : styles.managerPillInactive,
+                          ]}
+                          accessibilityRole="button"
+                        >
+                          <UserAvatar
+                            name={option.label}
+                            size={18}
+                            style={styles.managerPillAvatar}
+                          />
+                          <Text
+                            style={[
+                              styles.managerPillText,
+                              active && styles.managerPillTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.card}>
@@ -1179,28 +1183,38 @@ const styles = StyleSheet.create({
     color: theme.colors.subtleLight,
     fontWeight: "500",
   },
-  managerPillScroll: { marginTop: 16 },
-  managerPillContent: { paddingVertical: 4, paddingRight: 12 },
+  managerPillSection: {
+    marginTop: 20,
+    gap: 10,
+  },
+  managerPillLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.subtleLight,
+  },
+  managerPillScroll: { marginTop: 4 },
+  managerPillContent: { paddingVertical: 2, paddingRight: 10 },
   managerPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 14,
     marginRight: 8,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.35)",
+    backgroundColor: "rgba(241, 245, 249, 0.9)",
   },
-  managerPillAvatar: { marginRight: 8 },
+  managerPillAvatar: { marginRight: 6, borderRadius: 999 },
   managerPillActive: { backgroundColor: theme.colors.primary },
   managerPillInactive: {
-    backgroundColor: theme.colors.backgroundLight,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.5)",
+    backgroundColor: "rgba(248, 250, 252, 0.95)",
   },
   managerPillText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "600",
     color: theme.colors.subtleLight,
-    maxWidth: 120,
+    maxWidth: 96,
     flexShrink: 1,
   },
   managerPillTextActive: { color: "white" },
