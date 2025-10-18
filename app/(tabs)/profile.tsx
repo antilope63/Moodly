@@ -123,9 +123,7 @@ const MoodEvolutionChart = ({
       return [HORIZONTAL_PADDING + drawingWidth / 2];
     }
     const step = drawingWidth / (chartData.length - 1);
-    return chartData.map(
-      (_, index) => HORIZONTAL_PADDING + step * index
-    );
+    return chartData.map((_, index) => HORIZONTAL_PADDING + step * index);
   }, [chartData, drawingWidth]);
 
   const points = useMemo(() => {
@@ -160,15 +158,12 @@ const MoodEvolutionChart = ({
     return d;
   }, [points]);
 
-  const handleLabelLayout = useCallback(
-    (index: number, width: number) => {
-      setLabelWidths((prev) => {
-        if (prev[index] === width) return prev;
-        return { ...prev, [index]: width };
-      });
-    },
-    []
-  );
+  const handleLabelLayout = useCallback((index: number, width: number) => {
+    setLabelWidths((prev) => {
+      if (prev[index] === width) return prev;
+      return { ...prev, [index]: width };
+    });
+  }, []);
 
   const visibleLabelIndices = useMemo(() => {
     if (activePeriod === "Semaine") {
@@ -238,19 +233,14 @@ const MoodEvolutionChart = ({
                 styles.chartLabelMarker,
                 {
                   left: xPosition,
-                  transform: [
-                    { translateX: -measuredWidth / 2 },
-                  ],
+                  transform: [{ translateX: -measuredWidth / 2 }],
                 },
               ]}
             >
               <Text
                 style={styles.chartLabelText}
                 onLayout={(event) =>
-                  handleLabelLayout(
-                    chartIndex,
-                    event.nativeEvent.layout.width
-                  )
+                  handleLabelLayout(chartIndex, event.nativeEvent.layout.width)
                 }
               >
                 {label}
