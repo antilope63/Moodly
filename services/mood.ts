@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import type {
+  BasicUser,
   MoodCategory,
   MoodContext,
   MoodEntry,
-  MoodLabel,
   RoleType,
   TeamSummary,
   VisibilitySettings,
@@ -23,13 +23,14 @@ type DbMoodCategory = {
 type DbMoodEntry = {
   id: number;
   mood_value: number;
-  mood_label: MoodLabel;
   context: MoodContext;
   is_anonymous: boolean;
   reason_summary?: string | null;
   note?: string | null;
   logged_at: string;
   visibility: VisibilitySettings;
+  user_id?: string; // pour enrichir loggedBy
+  user_email?: string | null;
 };
 
 type DbMoodEntryRow = DbMoodEntry & {
@@ -51,7 +52,6 @@ const mapCategory = (row: DbMoodCategory): MoodCategory => ({
 const mapMoodEntry = (row: DbMoodEntryRow): MoodEntry => ({
   id: row.id,
   moodValue: row.mood_value,
-  moodLabel: row.mood_label,
   context: row.context,
   isAnonymous: row.is_anonymous,
   reasonSummary: row.reason_summary ?? undefined,
@@ -70,23 +70,216 @@ const mapMoodEntry = (row: DbMoodEntryRow): MoodEntry => ({
     : null,
 });
 
+// Normalise la forme renvoyée par Supabase (team parfois tableau si FK absente)
+const normalizeDbRow = (row: any): DbMoodEntryRow => {
+  const categoriesRaw = (row.categories ?? []).map(
+    (rel: any) => rel.mood_categories as DbMoodCategory,
+  );
+  const teamRaw = (row.team ?? null) as any;
+  const team = Array.isArray(teamRaw)
+    ? (teamRaw[0]
+        ? {
+            id: Number(teamRaw[0].id),
+            name: String(teamRaw[0].name),
+            slug: (teamRaw[0].slug as string | null) ?? null,
+          }
+        : null)
+    : teamRaw
+    ? {
+        id: Number(teamRaw.id),
+        name: String(teamRaw.name),
+        slug: (teamRaw.slug as string | null) ?? null,
+      }
+    : null;
+
+  return {
+    id: row.id,
+    mood_value: row.mood_value,
+    mood_label: row.mood_label,
+    context: row.context,
+    is_anonymous: row.is_anonymous,
+    reason_summary: row.reason_summary,
+    note: row.note,
+    logged_at: row.logged_at,
+    visibility: row.visibility,
+    categories: categoriesRaw,
+    team,
+  } as DbMoodEntryRow;
+};
+
 const moodEntrySelect =
-  'id, mood_value, mood_label, context, is_anonymous, reason_summary, note, logged_at, visibility, team:teams(id,name,slug), categories:mood_entry_categories(mood_categories(*))';
+  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, user_id, user_email, team:teams(id,name,slug), categories:mood_entry_categories(mood_categories(*))';
 
 export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
+  // Récupère l'utilisateur connecté (uuid/email)
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+
+  // Si pas connecté, on retourne un feed vide
+  const currentUser = authData?.user;
+  if (!currentUser) {
+    return [];
+  }
+
+  // Récupère l'équipe du user via table team_members
+  const { data: membership, error: membershipError } = await supabase
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', currentUser.id)
+    .limit(1)
+    .maybeSingle();
+  if (membershipError) throw new Error(membershipError.message);
+
+  const teamId = membership?.team_id as number | null | undefined;
+  if (!teamId) {
+    // Pas d'équipe associée => pas de feed d'équipe
+    return [];
+  }
+
+  // Exclut les posts des admins (si présents) sans casser le typage UUID
+  const { data: adminMembers } = await supabase
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', teamId)
+    .eq('role', 'admin');
+  const adminIds = (adminMembers ?? [])
+    .map((r: any) => r.user_id as string)
+    .filter((id) => Boolean(id));
+
+  let query = supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('team_id', teamId)
+    .eq('is_anonymous', false)
+    .neq('user_id', currentUser.id)
+    .order('logged_at', { ascending: false })
+    .limit(25) as any;
+
+  if (adminIds.length > 0) {
+    const inList = `(${adminIds.map((id) => `"${id}"`).join(',')})`;
+    query = query.not('user_id', 'in', inList);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as any[];
+  const userIds = Array.from(
+    new Set(
+      rows
+        .map((r) => r.user_id as string | undefined)
+        .filter((v): v is string => Boolean(v))
+    )
+  );
+  let profilesMap = new Map<string, { id: string; username?: string | null; email?: string | null }>();
+  if (userIds.length) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, email')
+      .in('id', userIds);
+    (profiles ?? []).forEach((p: any) => {
+      profilesMap.set(p.id as string, {
+        id: p.id as string,
+        username: (p.username as string | null) ?? null,
+        email: (p.email as string | null) ?? null,
+      });
+    });
+  }
+
+  return rows.map((row: any) => {
+    const normalized = normalizeDbRow(row);
+    const base = mapMoodEntry(normalized);
+    const profile = row.user_id ? profilesMap.get(row.user_id as string) : undefined;
+    const fallbackUsername = (row.user_email as string | null)?.split('@')[0] ?? 'Collègue';
+    const loggedBy: BasicUser | null = row.user_id
+      ? {
+          id: row.user_id as string,
+          username: profile?.username || fallbackUsername,
+          email: profile?.email || (row.user_email as string | undefined),
+          role: undefined,
+          rawRole: null,
+        }
+      : null;
+    return { ...base, loggedBy };
+  });
+};
+
+export const fetchMyTodayMoodEntry = async (): Promise<MoodEntry | null> => {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  const me = authData?.user;
+  if (!me) return null;
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
   const { data, error } = await supabase
     .from('mood_entries')
     .select(moodEntrySelect)
+    .eq('user_id', me.id)
+    .gte('logged_at', start.toISOString())
+    .lt('logged_at', end.toISOString())
     .order('logged_at', { ascending: false })
-    .limit(25);
-  if (error) throw new Error(error.message);
+    .limit(1)
+    .maybeSingle();
+  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
+  if (!data) return null;
+  return mapMoodEntry(normalizeDbRow(data));
+};
 
-  return (data ?? []).map((row: any) => {
-    const categoriesRaw = (row.categories ?? []).map(
-      (rel: any) => rel.mood_categories as DbMoodCategory,
-    );
-    return mapMoodEntry({ ...row, categories: categoriesRaw });
-  });
+export const updateMoodEntry = async (
+  id: number,
+  payload: UpdateMoodEntryPayload,
+): Promise<MoodEntry> => {
+  const updatePayload = {
+    mood_value: payload.moodValue,
+    context: payload.context,
+    is_anonymous: payload.isAnonymous,
+    reason_summary: payload.reasonSummary ?? null,
+    note: payload.note ?? null,
+    logged_at: payload.loggedAt ?? new Date().toISOString(),
+    visibility: payload.visibility,
+  } as const;
+
+  const { error: upError } = await supabase
+    .from('mood_entries')
+    .update(updatePayload)
+    .eq('id', id);
+  if (upError) throw new Error(upError.message);
+
+  if (Array.isArray(payload.categories)) {
+    await supabase.from('mood_entry_categories').delete().eq('mood_entry_id', id);
+    if (payload.categories.length) {
+      const rows = payload.categories.map((categoryId) => ({
+        mood_entry_id: id,
+        mood_category_id: categoryId,
+      }));
+      const { error: relErr } = await supabase
+        .from('mood_entry_categories')
+        .insert(rows);
+      if (relErr) throw new Error(relErr.message);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('id', id)
+    .single();
+  if (error) throw new Error(error.message);
+  return mapMoodEntry(normalizeDbRow(data));
+};
+
+export const fetchMoodEntryById = async (id: number): Promise<MoodEntry | null> => {
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select(moodEntrySelect)
+    .eq('id', id)
+    .maybeSingle();
+  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
+  if (!data) return null;
+  return mapMoodEntry(normalizeDbRow(data));
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
@@ -97,12 +290,7 @@ export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
     .limit(100);
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any) => {
-    const categoriesRaw = (row.categories ?? []).map(
-      (rel: any) => rel.mood_categories as DbMoodCategory,
-    );
-    return mapMoodEntry({ ...row, categories: categoriesRaw });
-  });
+  return (data ?? []).map((row: any) => mapMoodEntry(normalizeDbRow(row)));
 };
 
 export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
@@ -117,7 +305,6 @@ export const fetchMoodCategories = async (): Promise<MoodCategory[]> => {
 
 export type CreateMoodEntryPayload = {
   moodValue: number;
-  moodLabel: MoodLabel;
   context: MoodContext;
   isAnonymous: boolean;
   reasonSummary?: string | null;
@@ -127,6 +314,17 @@ export type CreateMoodEntryPayload = {
   visibility: VisibilitySettings;
   teamId?: number | null;
   userId?: string;
+};
+
+export type UpdateMoodEntryPayload = {
+  moodValue: number;
+  context: MoodContext;
+  isAnonymous: boolean;
+  reasonSummary?: string | null;
+  note?: string | null;
+  loggedAt?: string;
+  categories: number[];
+  visibility: VisibilitySettings;
 };
 
 export const createMoodEntry = async (
@@ -149,12 +347,16 @@ export const createMoodEntry = async (
   if (!teamId) {
     const { data: membership, error: membershipError } = await supabase
       .from('team_members')
-      .select('team_id')
+      .select('team_id, role')
       .eq('user_id', resolvedUserId)
       .limit(1)
       .maybeSingle();
     if (membershipError) throw new Error(membershipError.message);
     teamId = membership?.team_id ?? null;
+    const role = (membership?.role as string | null)?.toLowerCase() ?? null;
+    if (role === 'admin') {
+      throw new Error("Les administrateurs ne peuvent pas publier des humeurs.");
+    }
   }
 
   if (!teamId) {
@@ -167,7 +369,6 @@ export const createMoodEntry = async (
     user_id: resolvedUserId,
     team_id: teamId,
     mood_value: rest.moodValue,
-    mood_label: rest.moodLabel,
     context: rest.context,
     is_anonymous: rest.isAnonymous,
     reason_summary: rest.reasonSummary ?? null,
@@ -208,10 +409,7 @@ export const createMoodEntry = async (
     );
   }
 
-  const categoriesRaw = (fullRow.categories ?? []).map(
-    (rel: any) => rel.mood_categories as DbMoodCategory,
-  );
-  return mapMoodEntry({ ...fullRow, categories: categoriesRaw });
+  return mapMoodEntry(normalizeDbRow(fullRow));
 };
 
 export type ProfileSummary = {
@@ -254,9 +452,25 @@ export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
     }
   }
 
+  // Normalise le champ team qui peut être un objet ou un tableau
+  let team: TeamSummary | null = null;
+  const rawTeam = (membership as any)?.team;
+  if (Array.isArray(rawTeam)) {
+    const t = rawTeam[0];
+    team = t
+      ? { id: Number(t.id), name: String(t.name), slug: t.slug ?? undefined }
+      : null;
+  } else if (rawTeam) {
+    team = {
+      id: Number(rawTeam.id),
+      name: String(rawTeam.name),
+      slug: rawTeam.slug ?? undefined,
+    };
+  }
+
   return {
     role,
-    team: (membership?.team as TeamSummary | null) ?? null,
+    team,
     moodsCount: count ?? 0,
   };
 };

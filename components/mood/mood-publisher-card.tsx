@@ -1,157 +1,247 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { MOOD_OPTIONS } from '@/constants/mood';
-import { Palette } from '@/constants/theme';
-import { createMoodEntry } from '@/services/mood';
-import { useToastController } from '@tamagui/toast';
-import type { VisibilitySettings } from '@/types/mood';
+import { getMoodOptionByValue } from "@/constants/mood";
+import { Palette } from "@/constants/theme";
+import { fetchMyTodayMoodEntry } from "@/services/mood";
+import type { MoodEntry, VisibilitySettings } from "@/types/mood";
+import { useFocusEffect } from "@react-navigation/native";
 
 export const DEFAULT_VISIBILITY: VisibilitySettings = {
   shareMoodWithAll: true,
-  showReasonToPeers: 'anonymized',
-  showReasonToManagers: 'visible',
-  showReasonToHr: 'visible',
+  showReasonToPeers: "anonymized",
+  showReasonToManagers: "visible",
+  showReasonToHr: "visible",
   allowCustomRecipients: false,
 };
 
+const formatLoggedAt = (value?: string) => {
+  if (!value) return null;
+  try {
+    return new Date(value).toLocaleString(undefined, {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return null;
+  }
+};
+
+const getContextLabel = (context: MoodEntry["context"] | undefined) => {
+  switch (context) {
+    case "professional":
+      return "Travail";
+    case "personal":
+      return "Personnel";
+    case "mixed":
+      return "Mixte";
+    default:
+      return null;
+  }
+};
+
 type MoodPublisherCardProps = {
-  greeting?: string;
-  onPublished?: () => void | Promise<void>;
   onOpenForm?: () => void;
 };
 
-export const MoodPublisherCard = ({ greeting, onPublished, onOpenForm }: MoodPublisherCardProps) => {
-  const toast = useToastController();
-  const [selectedMood, setSelectedMood] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export const MoodPublisherCard = ({ onOpenForm }: MoodPublisherCardProps) => {
+  const [todayMood, setTodayMood] = useState<MoodEntry | null>(null);
 
-  const handleQuickPublish = async (value: number) => {
-    const option = MOOD_OPTIONS.find((item) => item.value === value);
-    if (!option) return;
-
+  const loadTodayMood = useCallback(async () => {
     try {
-      setSelectedMood(value);
-      setIsSubmitting(true);
-      await createMoodEntry({
-        moodValue: option.value,
-        moodLabel: option.label,
-        context: 'professional',
-        isAnonymous: false,
-        reasonSummary: null,
-        note: null,
-        categories: [],
-        visibility: DEFAULT_VISIBILITY,
-      });
-
-      if (onPublished) {
-        await Promise.resolve(onPublished());
-      }
-      toast.show('Mood partagé', { description: "Ton emoji a été ajouté au feed de l'équipe." });
-    } catch (err) {
-      toast.show('Oups', { description: (err as Error).message, type: 'error' });
-    } finally {
-      setIsSubmitting(false);
+      const entry = await fetchMyTodayMoodEntry();
+      setTodayMood(entry);
+    } catch {
+      setTodayMood(null);
     }
-  };
+  }, []);
+
+  // Charge l'entrée du jour (s'il y en a une) pour décider publier/modifier
+  useEffect(() => {
+    void loadTodayMood();
+  }, [loadTodayMood]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadTodayMood();
+    }, [loadTodayMood])
+  );
+
+  const moodOption = useMemo(
+    () => (todayMood ? getMoodOptionByValue(todayMood.moodValue) : null),
+    [todayMood]
+  );
+
+  const accentColor = moodOption?.color ?? "#7C6CF6";
+  const detailText =
+    todayMood?.reasonSummary?.trim() ||
+    todayMood?.note?.trim() ||
+    moodOption?.description ||
+    "Partage ton énergie avec l’équipe.";
+  const lastUpdated = formatLoggedAt(todayMood?.loggedAt);
+  const contextLabel = getContextLabel(todayMood?.context);
 
   return (
     <View style={styles.wrapper}>
-      {greeting ? <Text style={styles.greeting}>{greeting}</Text> : null}
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Ton mood</Text>
-        <Pressable onPress={onOpenForm} accessibilityRole="button">
-          <Text style={styles.link}>Modifier</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.subtitle}>Sélectionne l’emoji qui correspond le mieux à ta vibe du moment.</Text>
-      <View style={styles.card}>
-        {MOOD_OPTIONS.map((option) => {
-          const isActive = selectedMood === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              style={[styles.moodButton, isActive && styles.moodButtonActive]}
-              onPress={isSubmitting ? undefined : () => handleQuickPublish(option.value)}
-              accessibilityLabel={option.title}
-              accessibilityRole="button"
+      <Text style={styles.title}>Ton mood</Text>
+
+      <View style={styles.summaryWrapper}>
+        <View
+          style={[styles.summaryAccent, { backgroundColor: accentColor }]}
+        />
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <View
+              style={[
+                styles.emojiSurface,
+                { borderColor: accentColor, backgroundColor: "#F7F6FF" },
+              ]}
             >
-              <Text style={[styles.moodEmoji, isActive && styles.moodEmojiActive]}>{option.emoji}</Text>
-            </Pressable>
-          );
-        })}
+              <Text style={styles.moodEmoji}>{moodOption?.emoji ?? "🙂"}</Text>
+            </View>
+            <View style={styles.summaryTexts}>
+              <Text style={styles.moodTitle}>
+                {moodOption?.title ?? "Mood non renseigné"}
+              </Text>
+              <Text style={styles.moodDesc}>{detailText}</Text>
+            </View>
+          </View>
+          {contextLabel || lastUpdated ? (
+            <View style={styles.summaryFooter}>
+              {contextLabel ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{contextLabel}</Text>
+                </View>
+              ) : null}
+              {lastUpdated ? (
+                <Text style={styles.summaryMeta}>Mis à jour {lastUpdated}</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
       </View>
 
+      <Pressable
+        onPress={onOpenForm}
+        style={styles.cta}
+        accessibilityRole="button"
+      >
+        <Text style={styles.ctaText}>
+          {todayMood ? "Modifier mon mood" : "Partager mon mood"}
+        </Text>
+      </Pressable>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: '#DED7FF',
-    borderRadius: 32,
-    padding: 24,
+    backgroundColor: "#F1EEFF",
+    borderRadius: 28,
+    padding: 22,
     gap: 18,
-    shadowColor: '#00000022',
+    borderWidth: 1,
+    borderColor: "#E0DAFF",
+    shadowColor: "#0000001a",
     shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  greeting: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Palette.textPrimary,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: "700",
     color: Palette.textPrimary,
   },
-  link: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7165F2',
-  },
-  subtitle: {
-    color: '#594F9F',
-    fontSize: 13,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  summaryWrapper: {
+    flexDirection: "row",
+    alignItems: "stretch",
     gap: 12,
   },
-  moodButton: {
-    flex: 1,
-    backgroundColor: Palette.whiteBackground,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E4EA',
-    height: 64,
-    aspectRatio: 1,
-    shadowColor: '#00000011',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  summaryAccent: {
+    width: 6,
+    borderRadius: 999,
   },
-  moodButtonActive: {
-    backgroundColor: '#7165F2',
-    borderColor: '#7165F2',
+  summaryCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 18,
+    gap: 14,
+    shadowColor: "#00000011",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  emojiSurface: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "#F7F6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
   },
   moodEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
-  moodEmojiActive: {
-    transform: [{ scale: 1.05 }],
+  summaryTexts: {
+    flex: 1,
+    gap: 4,
+  },
+  moodTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Palette.textPrimary,
+  },
+  moodDesc: {
+    color: Palette.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  summaryFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  badge: {
+    backgroundColor: "#E9E6FF",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#5C54C6",
+  },
+  summaryMeta: {
+    fontSize: 12,
+    color: "#7A7894",
+  },
+  cta: {
+    backgroundColor: "#5C54C6",
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#00000022",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  ctaText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });

@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 import { adminFindUsersByEmail, adminUpsertUser } from "@/services/auth";
 
-const roles = ["super_admin", "manager", "hr", "employee"];
+const roles = ["super_admin", "admin", "manager", "hr", "employee"];
 
 type AdminUser = {
   id: string;
@@ -92,7 +92,15 @@ export default function AdminScreen() {
     setRole(u.app_metadata?.role || "employee");
   };
 
-  if (user?.rawRole !== "super_admin") {
+  const viewerRawRole = user?.rawRole?.toLowerCase();
+  const viewerRole = user?.role?.toLowerCase();
+  if (
+    !(
+      viewerRawRole === "super_admin" ||
+      viewerRawRole === "admin" ||
+      viewerRole === "admin"
+    )
+  ) {
     return null;
   }
 
