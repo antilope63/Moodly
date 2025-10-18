@@ -76,9 +76,12 @@ const describeVisibility = (entry: MoodEntry) => {
 
 // --- Logique du Graphique Corrigée ---
 const CHART_HEIGHT = 100;
-const SVG_WIDTH = Dimensions.get("window").width - 32; // Largeur totale de la carte
-const HORIZONTAL_PADDING = 10; // Marge pour que les points ne soient pas coupés
-const CHART_DRAWING_WIDTH = SVG_WIDTH - HORIZONTAL_PADDING * 2;
+const DEFAULT_OUTER_PADDING = 16;
+const DEFAULT_CARD_PADDING = 16;
+const SVG_DEFAULT_WIDTH =
+  Dimensions.get("window").width -
+  (DEFAULT_OUTER_PADDING * 2 + DEFAULT_CARD_PADDING * 2); // Largeur utile intérieure à la carte
+const HORIZONTAL_PADDING = 10; // Marge de sécurité pour éviter la coupe des points
 
 const MoodEvolutionChart = ({
   data,
@@ -87,6 +90,10 @@ const MoodEvolutionChart = ({
   data: MoodEntry[];
   activePeriod: string;
 }) => {
+  const [chartWidth, setChartWidth] = useState<number>(SVG_DEFAULT_WIDTH);
+  const [labelWidths, setLabelWidths] = useState<Record<number, number>>({});
+  const currentWidth = Math.max(0, chartWidth || SVG_DEFAULT_WIDTH);
+  const drawingWidth = Math.max(0, currentWidth - HORIZONTAL_PADDING * 2);
   const chartData = useMemo(() => {
     const today = new Date();
     const daysToShow = activePeriod === "Mois" ? 30 : 7;
@@ -106,6 +113,21 @@ const MoodEvolutionChart = ({
     });
   }, [data, activePeriod]);
 
+  useEffect(() => {
+    setLabelWidths({});
+  }, [activePeriod, chartData.length]);
+
+  const labelPositions = useMemo(() => {
+    if (chartData.length === 0) return [];
+    if (chartData.length === 1) {
+      return [HORIZONTAL_PADDING + drawingWidth / 2];
+    }
+    const step = drawingWidth / (chartData.length - 1);
+    return chartData.map(
+      (_, index) => HORIZONTAL_PADDING + step * index
+    );
+  }, [chartData, drawingWidth]);
+
   const points = useMemo(() => {
     if (chartData.length <= 1) {
       if (chartData.length === 1 && chartData[0].score > 0) {
@@ -113,7 +135,7 @@ const MoodEvolutionChart = ({
           CHART_HEIGHT - (chartData[0].score / 5) * (CHART_HEIGHT - 20) + 10;
         return [
           {
-            x: CHART_DRAWING_WIDTH / 2 + HORIZONTAL_PADDING,
+            x: labelPositions[0] ?? drawingWidth / 2 + HORIZONTAL_PADDING,
             y,
             score: chartData[0].score,
           },
@@ -122,14 +144,11 @@ const MoodEvolutionChart = ({
       return [];
     }
     return chartData.map((point, index) => {
-      // CORRECTION : Calcul de X avec la marge de sécurité
-      const x =
-        HORIZONTAL_PADDING +
-        (index / (chartData.length - 1)) * CHART_DRAWING_WIDTH;
+      const x = labelPositions[index];
       const y = CHART_HEIGHT - (point.score / 5) * (CHART_HEIGHT - 20) + 10;
-      return { x, y, score: point.score };
+      return { x: x ?? HORIZONTAL_PADDING, y, score: point.score };
     });
-  }, [chartData]);
+  }, [chartData, labelPositions]);
 
   const path = useMemo(() => {
     const visiblePoints = points.filter((p) => p.score > 0);
@@ -140,6 +159,29 @@ const MoodEvolutionChart = ({
     }
     return d;
   }, [points]);
+
+  const handleLabelLayout = useCallback(
+    (index: number, width: number) => {
+      setLabelWidths((prev) => {
+        if (prev[index] === width) return prev;
+        return { ...prev, [index]: width };
+      });
+    },
+    []
+  );
+
+  const visibleLabelIndices = useMemo(() => {
+    if (activePeriod === "Semaine") {
+      return chartData.map((_, index) => index);
+    }
+    if (chartData.length === 0) return [];
+    const first = 0;
+    const middle = Math.floor(chartData.length / 2);
+    const last = chartData.length - 1;
+    return Array.from(new Set([first, middle, last])).filter(
+      (index) => index >= 0 && index < chartData.length
+    );
+  }, [activePeriod, chartData]);
 
   if (data.length === 0) {
     return (
@@ -152,8 +194,11 @@ const MoodEvolutionChart = ({
   }
 
   return (
-    <View style={styles.chartWrapper}>
-      <Svg width={SVG_WIDTH} height={CHART_HEIGHT}>
+    <View
+      style={styles.chartWrapper}
+      onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}
+    >
+      <Svg width={currentWidth} height={CHART_HEIGHT}>
         <Path
           d={path}
           fill="none"
@@ -175,26 +220,44 @@ const MoodEvolutionChart = ({
           ) : null
         )}
       </Svg>
-      <View style={styles.graphLabelContainer}>
-        {activePeriod === "Semaine" ? (
-          chartData.map((day, index) => (
-            <Text key={index} style={styles.chartLabelText}>
-              {day.label}
-            </Text>
-          ))
-        ) : (
-          <>
-            <Text style={[styles.chartLabelText, { textAlign: "left" }]}>
-              {chartData[0]?.label}
-            </Text>
-            <Text style={[styles.chartLabelText, { textAlign: "center" }]}>
-              {chartData[14]?.label}
-            </Text>
-            <Text style={[styles.chartLabelText, { textAlign: "right" }]}>
-              {chartData[29]?.label}
-            </Text>
-          </>
-        )}
+      <View
+        style={[
+          styles.graphLabelContainer,
+          { height: activePeriod === "Semaine" ? 18 : 20 },
+        ]}
+        pointerEvents="none"
+      >
+        {visibleLabelIndices.map((chartIndex) => {
+          const label = chartData[chartIndex]?.label;
+          const xPosition = labelPositions[chartIndex] ?? HORIZONTAL_PADDING;
+          const measuredWidth = labelWidths[chartIndex] ?? 0;
+          return (
+            <View
+              key={`${chartIndex}-${label}`}
+              style={[
+                styles.chartLabelMarker,
+                {
+                  left: xPosition,
+                  transform: [
+                    { translateX: -measuredWidth / 2 },
+                  ],
+                },
+              ]}
+            >
+              <Text
+                style={styles.chartLabelText}
+                onLayout={(event) =>
+                  handleLabelLayout(
+                    chartIndex,
+                    event.nativeEvent.layout.width
+                  )
+                }
+              >
+                {label}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -883,11 +946,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   graphLabelContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    position: "relative",
     width: "100%",
     marginTop: 8,
-    paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  chartLabelMarker: {
+    position: "absolute",
+    alignItems: "center",
   },
   chartLabelText: {
     fontSize: 11,
