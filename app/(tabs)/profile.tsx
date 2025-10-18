@@ -89,7 +89,8 @@ const DEFAULT_CARD_PADDING = 16;
 const SVG_DEFAULT_WIDTH =
   Dimensions.get("window").width -
   (DEFAULT_OUTER_PADDING * 2 + DEFAULT_CARD_PADDING * 2); // Largeur utile intérieure à la carte
-const HORIZONTAL_PADDING = 16; // Marge de sécurité pour éviter la coupe des points
+const LEFT_AXIS_PADDING = 44; // Laisse de l'espace pour les libellés verticaux sans marcher sur le tracé
+const RIGHT_CHART_PADDING = 16; // Marge droite pour que les points ne soient pas coupés
 const MOOD_LEVELS = [5, 4, 3, 2, 1];
 
 type ManagerPillOption =
@@ -109,7 +110,10 @@ const MoodEvolutionChart = ({
   const [chartWidth, setChartWidth] = useState<number>(SVG_DEFAULT_WIDTH);
   const [labelWidths, setLabelWidths] = useState<Record<number, number>>({});
   const currentWidth = Math.max(0, chartWidth || SVG_DEFAULT_WIDTH);
-  const drawingWidth = Math.max(0, currentWidth - HORIZONTAL_PADDING * 2);
+  const drawingWidth = Math.max(
+    0,
+    currentWidth - LEFT_AXIS_PADDING - RIGHT_CHART_PADDING
+  );
   const chartData = useMemo(() => {
     const today = new Date();
     const daysToShow = activePeriod === "Mois" ? 30 : 7;
@@ -136,10 +140,10 @@ const MoodEvolutionChart = ({
   const labelPositions = useMemo(() => {
     if (chartData.length === 0) return [];
     if (chartData.length === 1) {
-      return [HORIZONTAL_PADDING + drawingWidth / 2];
+      return [LEFT_AXIS_PADDING + drawingWidth / 2];
     }
     const step = drawingWidth / (chartData.length - 1);
-    return chartData.map((_, index) => HORIZONTAL_PADDING + step * index);
+    return chartData.map((_, index) => LEFT_AXIS_PADDING + step * index);
   }, [chartData, drawingWidth]);
 
   const points = useMemo(() => {
@@ -148,7 +152,7 @@ const MoodEvolutionChart = ({
         const y = getYForMoodValue(chartData[0].score);
         return [
           {
-            x: labelPositions[0] ?? drawingWidth / 2 + HORIZONTAL_PADDING,
+            x: labelPositions[0] ?? drawingWidth / 2 + LEFT_AXIS_PADDING,
             y,
             score: chartData[0].score,
           },
@@ -159,7 +163,7 @@ const MoodEvolutionChart = ({
     return chartData.map((point, index) => {
       const x = labelPositions[index];
       const y = getYForMoodValue(point.score);
-      return { x: x ?? HORIZONTAL_PADDING, y, score: point.score };
+      return { x: x ?? LEFT_AXIS_PADDING, y, score: point.score };
     });
   }, [chartData, labelPositions]);
 
@@ -214,20 +218,20 @@ const MoodEvolutionChart = ({
           return (
             <React.Fragment key={level}>
               <Line
-                x1={HORIZONTAL_PADDING}
+                x1={LEFT_AXIS_PADDING}
                 y1={y}
-                x2={currentWidth - HORIZONTAL_PADDING}
+                x2={currentWidth - RIGHT_CHART_PADDING}
                 y2={y}
                 stroke={theme.colors.borderLight}
                 strokeDasharray="4 4"
                 strokeWidth={1}
               />
               <SvgText
-                x={HORIZONTAL_PADDING + 4}
+                x={LEFT_AXIS_PADDING - 6}
                 y={y + 3}
                 fill={theme.colors.subtleLight}
                 fontSize={10}
-                textAnchor="start"
+                textAnchor="end"
               >
                 {`${level}/5`}
               </SvgText>
@@ -264,7 +268,8 @@ const MoodEvolutionChart = ({
       >
         {visibleLabelIndices.map((chartIndex) => {
           const label = chartData[chartIndex]?.label;
-          const xPosition = labelPositions[chartIndex] ?? HORIZONTAL_PADDING;
+          const xPosition =
+            labelPositions[chartIndex] ?? LEFT_AXIS_PADDING;
           const measuredWidth = labelWidths[chartIndex] ?? 0;
           return (
             <View
