@@ -812,7 +812,7 @@ export function ProfileDashboard({
                 <Text style={styles.modalCloseButton}>Fermer</Text>
               </Pressable>
             </View>
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 8, paddingBottom: 44 }}>
               {pickerStep === 1 ? (
                 <>
                   <Pressable
