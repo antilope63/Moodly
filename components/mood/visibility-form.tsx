@@ -8,6 +8,8 @@ import { Palette } from '@/constants/theme';
 type VisibilityFormProps = {
   value: VisibilitySettings;
   onChange: (nextValue: VisibilitySettings) => void;
+  showHrSection?: boolean;
+  variant?: 'default' | 'plain';
 };
 
 const LEVELS: VisibilityLevel[] = ['hidden', 'anonymized', 'visible'];
@@ -18,7 +20,7 @@ const levelLabel: Record<VisibilityLevel, string> = {
   visible: 'Visible',
 };
 
-export const VisibilityForm = ({ value, onChange }: VisibilityFormProps) => {
+export const VisibilityForm = ({ value, onChange, showHrSection = true, variant = 'default' }: VisibilityFormProps) => {
   const peerCaption = useMemo(() => {
     switch (value.showReasonToPeers) {
       case 'hidden':
@@ -40,7 +42,7 @@ export const VisibilityForm = ({ value, onChange }: VisibilityFormProps) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, variant === 'plain' && styles.containerPlain]}>
       <View style={styles.row}>
         <Text style={styles.title}>Partage global</Text>
         <Switch
@@ -79,19 +81,21 @@ export const VisibilityForm = ({ value, onChange }: VisibilityFormProps) => {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pour la RH</Text>
-        <View style={styles.levelRow}>
-          {LEVELS.map((level) => (
-            <Chip
-              key={level}
-              label={levelLabel[level]}
-              selected={value.showReasonToHr === level}
-              onPress={() => handleLevelChange('showReasonToHr', level)}
-            />
-          ))}
+      {showHrSection ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pour la RH</Text>
+          <View style={styles.levelRow}>
+            {LEVELS.map((level) => (
+              <Chip
+                key={level}
+                label={levelLabel[level]}
+                selected={value.showReasonToHr === level}
+                onPress={() => handleLevelChange('showReasonToHr', level)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.row}>
         <Text style={styles.title}>Inviter d’autres lecteurs</Text>
@@ -113,6 +117,13 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.mauvePastel,
     padding: 20,
     borderRadius: 24,
+  },
+  containerPlain: {
+    backgroundColor: 'transparent',
+    padding: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 0,
   },
   row: {
     flexDirection: 'row',

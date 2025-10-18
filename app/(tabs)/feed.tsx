@@ -50,7 +50,7 @@ type FeedListProps = {
   error: Error | null;
   refresh: () => Promise<void>;
   greeting: string;
-  onOpenForm: () => void;
+  onOpenForm: (initialMoodValue?: number) => void;
   canPublish: boolean;
 };
 
@@ -148,9 +148,20 @@ export default function FeedScreen() {
     }
   }, []);
 
-  const handleOpenForm = useCallback(() => {
-    router.push("/(tabs)/log");
-  }, [router]);
+  const handleOpenForm = useCallback(
+    (initialMoodValue?: number) => {
+      const params =
+        typeof initialMoodValue === "number"
+          ? { moodValue: String(initialMoodValue) }
+          : {};
+
+      router.push({
+        pathname: "/(tabs)/log",
+        params,
+      });
+    },
+    [router]
+  );
 
   const handleSelectSection = useCallback(
     (index: number) => {

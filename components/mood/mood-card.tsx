@@ -1,50 +1,64 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
 
-import { getMoodOptionByValue } from '@/constants/mood';
-import { Palette } from '@/constants/theme';
-import type { MoodEntry, VisibilitySettings } from '@/types/mood';
+import { getMoodOptionByValue } from "@/constants/mood";
+import { Palette } from "@/constants/theme";
+import type { MoodEntry, VisibilitySettings } from "@/types/mood";
 
-const formatVisibility = (visibility: VisibilitySettings, isAnonymous: boolean) => {
-  if (isAnonymous) return 'Anonyme';
-  if (visibility.showReasonToPeers === 'hidden') return 'Raisons cachées aux collègues';
-  if (visibility.showReasonToPeers === 'anonymized') return 'Raisons anonymisées pour les collègues';
-  return 'Raisons visibles par les collègues';
+const formatVisibility = (
+  visibility: VisibilitySettings,
+  isAnonymous: boolean
+) => {
+  if (isAnonymous) return "Anonyme";
+  if (visibility.showReasonToPeers === "hidden")
+    return "Raisons cachées aux collègues";
+  if (visibility.showReasonToPeers === "anonymized")
+    return "Raisons anonymisées pour les collègues";
+  return "Raisons visibles par les collègues";
 };
 
 const formatDate = (date: string) => {
   try {
     return new Date(date).toLocaleString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return date;
   }
 };
 
-export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; highlightReason?: boolean }) => {
+export const MoodCard = ({
+  mood,
+  highlightReason = false,
+}: {
+  mood: MoodEntry;
+  highlightReason?: boolean;
+}) => {
   const option = getMoodOptionByValue(mood.moodValue);
   const accentColor =
     {
-      1: '#FFADA6',
-      2: '#F5ABC3',
-      3: '#F2F5A9',
-      4: '#DDCFF8',
-      5: '#B8FFCE',
+      1: "#FFADA6",
+      2: "#F5ABC3",
+      3: "#F2F5A9",
+      4: "#DDCFF8",
+      5: "#B8FFCE",
     }[mood.moodValue] ?? option.color;
-  const contextLabel = (
-    mood.context === 'professional'
-      ? 'Travail'
-      : mood.context === 'personal'
-      ? 'Personnel'
-      : 'Mixte'
-  );
-  const authorName = mood.isAnonymous || !mood.loggedBy ? 'Un collègue' : mood.loggedBy.username;
+  const contextLabel =
+    mood.context === "professional"
+      ? "Travail"
+      : mood.context === "personal"
+      ? "Personnel"
+      : "Mixte";
+  const authorName =
+    mood.isAnonymous || !mood.loggedBy ? "Un collègue" : mood.loggedBy.username;
   const teamLabel = mood.team?.name ? `Équipe ${mood.team.name}` : null;
   const primaryMessage =
-    (highlightReason && mood.reasonSummary) || mood.note || mood.reasonSummary || null;
+    (highlightReason && mood.reasonSummary) ||
+    mood.note ||
+    mood.reasonSummary ||
+    null;
 
   return (
     <View style={styles.card}>
@@ -70,13 +84,17 @@ export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; h
           </View>
           <View style={styles.messageColumn}>
             <Text style={styles.title}>{option.title}</Text>
-            {primaryMessage ? <Text style={styles.note}>{primaryMessage}</Text> : null}
+            {primaryMessage ? (
+              <Text style={styles.note}>{primaryMessage}</Text>
+            ) : null}
             <Text style={styles.timestamp}>{formatDate(mood.loggedAt)}</Text>
           </View>
         </View>
 
         <View style={styles.footerRow}>
-          <Text style={styles.visibility}>{formatVisibility(mood.visibility, mood.isAnonymous)}</Text>
+          <Text style={styles.visibility}>
+            {formatVisibility(mood.visibility, mood.isAnonymous)}
+          </Text>
         </View>
       </View>
     </View>
@@ -86,9 +104,9 @@ export const MoodCard = ({ mood, highlightReason = false }: { mood: MoodEntry; h
 const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     marginHorizontal: 4,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   sideAccent: {
@@ -102,24 +120,26 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     gap: 16,
-    shadowColor: '#00000016',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 1, height: 2 },
-    elevation: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0, 0, 0, 0.05)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   author: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Palette.textPrimary,
   },
   badgesRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   badge: {
@@ -129,28 +149,28 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Palette.textPrimary,
   },
   contextBadge: {
-    backgroundColor: '#FEC6C6',
+    backgroundColor: "#FEC6C6",
   },
   teamBadge: {
-    backgroundColor: '#C9C3FF',
+    backgroundColor: "#C9C3FF",
   },
   bodyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 16,
   },
   emojiSurface: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#00000022',
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#00000022",
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -165,7 +185,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Palette.textPrimary,
   },
   note: {
@@ -175,15 +195,15 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: '#8A8CA5',
+    color: "#8A8CA5",
   },
   footerRow: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E4F3',
+    borderTopColor: "#E2E4F3",
     paddingTop: 12,
   },
   visibility: {
-    color: '#8A8CA5',
+    color: "#8A8CA5",
     fontSize: 12,
   },
 });
