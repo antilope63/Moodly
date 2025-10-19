@@ -54,29 +54,46 @@ export const fetchManagedTeams = async (managerUserId: string): Promise<ManagedT
   return rows.map((r) => ({ id: r.id as number, name: r.name as string, slug: r.slug as string | null }));
 };
 
-export const fetchTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
+export const fetchTeamMembers = async (
+  teamId: number,
+  options?: { excludeUserId?: string },
+): Promise<TeamMember[]> => {
+  const excludeUserId = options?.excludeUserId ?? null;
   // Essaie d'utiliser une RPC si disponible pour récupérer les profils (auth.users)
   try {
     const { data: rpcData } = await supabase.rpc('get_team_members_with_profile', {
       team_id_input: teamId,
     });
     if (rpcData && Array.isArray(rpcData)) {
-      return (rpcData as any[]).map((row, index) => ({
+      const mapped = (rpcData as any[]).map((row, index) => ({
         id: row.user_id as string,
         label: (row.display_name as string) || (row.email as string) || `Employé ${index + 1}`,
         email: row.email as string | undefined,
       }));
+      // Filtre admins + utilisateur courant via table team_members
+      const { data: rolesRows } = await supabase
+        .from('team_members')
+        .select('user_id, role')
+        .eq('team_id', teamId);
+      const adminIds = new Set<string>(
+        (rolesRows ?? [])
+          .filter((r: any) => (r.role as string)?.toLowerCase() === 'admin')
+          .map((r: any) => r.user_id as string),
+      );
+      return mapped.filter((m) => m.id !== excludeUserId && !adminIds.has(m.id));
     }
   } catch {
     // on retombe sur la version simple ci-dessous
   }
   const { data, error } = await supabase
     .from('team_members')
-    .select('user_id')
+    .select('user_id, role')
     .eq('team_id', teamId);
   if (error) throw new Error(error.message);
 
-  const members = (data ?? []) as { user_id: string }[];
+  const members = ((data ?? []) as { user_id: string; role?: string | null }[])
+    .filter((m) => m.user_id !== excludeUserId)
+    .filter((m) => (m.role ?? '').toLowerCase() !== 'admin');
   const ids = members.map((m) => m.user_id);
   // Tentative de récup email/nom via views publiques ou table profiles
   try {

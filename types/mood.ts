@@ -47,6 +47,10 @@ export interface MoodEntry {
   loggedAt: string;
   visibility: VisibilitySettings;
   categories: MoodCategory[];
+  freedomChoice?: string | null;
+  supportChoice?: string | null;
+  energyChoice?: string | null;
+  pridePercent?: number | null;
   loggedBy?: BasicUser | null;
   additionalViewers?: BasicUser[];
   team?: TeamSummary | null;

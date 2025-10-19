@@ -13,25 +13,21 @@ export type UseManagedMoodHistoryParams = {
   targetUserId?: string | null;
 };
 
-const mapRowToMoodEntry = (row: any): MoodEntry => {
-  const categoriesRaw = (row.categories ?? []).map((rel: any) => rel.mood_categories);
-  return {
-    id: row.id,
-    moodValue: row.mood_value,
-    context: row.context,
-    isAnonymous: row.is_anonymous,
-    reasonSummary: row.reason_summary ?? undefined,
-    note: row.note ?? undefined,
-    loggedAt: row.logged_at,
-    visibility: row.visibility,
-    categories: (categoriesRaw ?? []).map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      categoryType: c.category_type,
-    })),
-  } as MoodEntry;
-};
+const mapRowToMoodEntry = (row: any): MoodEntry => ({
+  id: row.id,
+  moodValue: row.mood_value,
+  context: row.context,
+  isAnonymous: row.is_anonymous,
+  reasonSummary: row.reason_summary ?? undefined,
+  note: row.note ?? undefined,
+  loggedAt: row.logged_at,
+  visibility: row.visibility,
+  categories: [],
+  freedomChoice: row.freedom_choice ?? undefined,
+  supportChoice: row.support_choice ?? undefined,
+  energyChoice: row.energy_choice ?? undefined,
+  pridePercent: row.pride_percent ?? undefined,
+});
 
 export const useManagedMoodHistory = ({ scope, teamId, teamIds, targetUserId }: UseManagedMoodHistoryParams) => {
   const { user } = useAuth();
@@ -51,7 +47,7 @@ export const useManagedMoodHistory = ({ scope, teamId, teamIds, targetUserId }: 
     try {
       let query = supabase
         .from('mood_entries')
-        .select('*, categories:mood_entry_categories(mood_categories(*))')
+        .select('*')
         .order('logged_at', { ascending: false }) as any;
 
       if (scope === 'me') {
@@ -94,5 +90,3 @@ export const useManagedMoodHistory = ({ scope, teamId, teamIds, targetUserId }: 
     [items, isLoading, error, load]
   );
 };
-
-

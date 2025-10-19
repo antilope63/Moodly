@@ -1,5 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import React from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 type UserAvatarProps = {
   name: string;
@@ -9,14 +15,14 @@ type UserAvatarProps = {
 
 // Une palette de couleurs pour les fonds d'avatar
 const AVATAR_COLORS = [
-  '#FFC107', // Amber
-  '#00BCD4', // Cyan
-  '#4CAF50', // Green
-  '#E91E63', // Pink
-  '#9C27B0', // Purple
-  '#3F51B5', // Indigo
-  '#FF5722', // Deep Orange
-  '#03A9F4', // Light Blue
+  "#FFC107", // Amber
+  "#00BCD4", // Cyan
+  "#4CAF50", // Green
+  "#E91E63", // Pink
+  "#9C27B0", // Purple
+  "#3F51B5", // Indigo
+  "#FF5722", // Deep Orange
+  "#03A9F4", // Light Blue
 ];
 
 // Génère une couleur constante à partir du nom
@@ -32,7 +38,7 @@ const getColorByName = (name: string) => {
 };
 
 export const UserAvatar = ({ name, size = 50, style }: UserAvatarProps) => {
-  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  const initial = name ? name.charAt(0).toUpperCase() : "?";
   const backgroundColor = getColorByName(name);
   const fontSize = size * 0.5;
 
@@ -56,11 +62,11 @@ export const UserAvatar = ({ name, size = 50, style }: UserAvatarProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   text: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
 });

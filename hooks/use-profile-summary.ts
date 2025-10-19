@@ -18,6 +18,8 @@ const formatRoleLabel = (role?: string | null) => {
       return 'RH';
     case 'employee':
       return 'Employé';
+    case 'admin':
+      return 'Admin';
     default:
       return role ?? null;
   }
