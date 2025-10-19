@@ -1,6 +1,7 @@
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { getReflectionOption } from "@/constants/reflection-options";
 import { Palette } from "@/constants/theme";
 import { useManagedMoodHistory } from "@/hooks/use-managed-mood-history";
 import { useProfileSummary } from "@/hooks/use-profile-summary";
@@ -11,12 +12,7 @@ import type { MoodEntry } from "@/types/mood";
 import { format, isSameDay, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "expo-router";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -98,7 +94,13 @@ const BOTTOM_SHEET_HEIGHT = Math.min(
 
 type ManagerPillOption =
   | { key: "self"; label: string; type: "me" }
-  | { key: string; label: string; type: "user"; userId: string; teamId: number };
+  | {
+      key: string;
+      label: string;
+      type: "user";
+      userId: string;
+      teamId: number;
+    };
 
 const getYForMoodValue = (value: number) =>
   CHART_HEIGHT - (value / 5) * (CHART_HEIGHT - 20) + 10;
@@ -271,8 +273,7 @@ const MoodEvolutionChart = ({
       >
         {visibleLabelIndices.map((chartIndex) => {
           const label = chartData[chartIndex]?.label;
-          const xPosition =
-            labelPositions[chartIndex] ?? LEFT_AXIS_PADDING;
+          const xPosition = labelPositions[chartIndex] ?? LEFT_AXIS_PADDING;
           const measuredWidth = labelWidths[chartIndex] ?? 0;
           return (
             <View
@@ -449,19 +450,18 @@ export function ProfileDashboard({
         .filter((id) => !teamIdToMembers[id]);
       if (missingTeamIds.length === 0) return;
       try {
-        const results: Array<readonly [number, TeamMember[]]> =
-          await Promise.all(
-            missingTeamIds.map(async (teamId) => {
-              try {
-                const list = await fetchTeamMembers(teamId, {
-                  excludeUserId: user?.id ?? undefined,
-                });
-                return [teamId, list] as const;
-              } catch {
-                return [teamId, [] as TeamMember[]] as const;
-              }
-            })
-          );
+        const results: (readonly [number, TeamMember[]])[] = await Promise.all(
+          missingTeamIds.map(async (teamId) => {
+            try {
+              const list = await fetchTeamMembers(teamId, {
+                excludeUserId: user?.id ?? undefined,
+              });
+              return [teamId, list] as const;
+            } catch {
+              return [teamId, [] as TeamMember[]] as const;
+            }
+          })
+        );
         setTeamIdToMembers((prev) => {
           const next: Record<number, TeamMember[]> = { ...prev };
           results.forEach(([id, list]) => {
@@ -485,8 +485,7 @@ export function ProfileDashboard({
 
   const Container = embedded ? View : SafeAreaView;
 
-  const managerSelfLabel =
-    summary?.username ?? user?.username ?? "Moi";
+  const managerSelfLabel = summary?.username ?? user?.username ?? "Moi";
 
   const managerUserPills = useMemo<ManagerPillOption[]>(() => {
     if (!isManager) return [];
@@ -546,7 +545,9 @@ export function ProfileDashboard({
 
     const fallbackTeamFromSummary = summary?.team?.name ?? null;
     if (selectedTeamId != null) {
-      const selectedTeam = managedTeams.find((team) => team.id === selectedTeamId);
+      const selectedTeam = managedTeams.find(
+        (team) => team.id === selectedTeamId
+      );
       if (selectedTeam) {
         return selectedTeam.name;
       }
@@ -559,20 +560,17 @@ export function ProfileDashboard({
     return fallbackTeamFromSummary;
   }, [isManager, managedTeams, selectedTeamId, summary?.team?.name]);
 
-  const handleSelectManagerPill = useCallback(
-    (option: ManagerPillOption) => {
-      if (option.type === "me") {
-        setScope("me");
-        setSelectedTeamId(null);
-        setTargetUserId(null);
-        return;
-      }
-      setScope("user");
-      setSelectedTeamId(option.teamId);
-      setTargetUserId(option.userId);
-    },
-    []
-  );
+  const handleSelectManagerPill = useCallback((option: ManagerPillOption) => {
+    if (option.type === "me") {
+      setScope("me");
+      setSelectedTeamId(null);
+      setTargetUserId(null);
+      return;
+    }
+    setScope("user");
+    setSelectedTeamId(option.teamId);
+    setTargetUserId(option.userId);
+  }, []);
 
   const isPillActive = useCallback(
     (option: ManagerPillOption) => {
@@ -707,7 +705,9 @@ export function ProfileDashboard({
               />
               {showManagerPills ? (
                 <View style={styles.managerPillSection}>
-                  <Text style={styles.managerPillLabel}>Voir les données de</Text>
+                  <Text style={styles.managerPillLabel}>
+                    Voir les données de
+                  </Text>
                   <ScrollView
                     horizontal
                     style={styles.managerPillScroll}
@@ -869,7 +869,8 @@ export function ProfileDashboard({
                     Sentiment de liberté
                   </Text>
                   <Text style={styles.historySectionText}>
-                    {selectedHistoryItem.freedomChoice}
+                    {getReflectionOption(selectedHistoryItem.freedomChoice)
+                      ?.message ?? selectedHistoryItem.freedomChoice}
                   </Text>
                 </View>
               ) : null}
@@ -880,29 +881,28 @@ export function ProfileDashboard({
                     Sentiment de soutien
                   </Text>
                   <Text style={styles.historySectionText}>
-                    {selectedHistoryItem.supportChoice}
+                    {getReflectionOption(selectedHistoryItem.supportChoice)
+                      ?.message ?? selectedHistoryItem.supportChoice}
                   </Text>
                 </View>
               ) : null}
 
               {selectedHistoryItem.energyChoice != null ? (
                 <View style={styles.historySection}>
-                  <Text style={styles.historySectionTitle}>
-                    Énergie perçue
-                  </Text>
+                  <Text style={styles.historySectionTitle}>Énergie perçue</Text>
                   <Text style={styles.historySectionText}>
-                    {selectedHistoryItem.energyChoice}
+                    {getReflectionOption(selectedHistoryItem.energyChoice)
+                      ?.message ?? selectedHistoryItem.energyChoice}
                   </Text>
                 </View>
               ) : null}
 
               {selectedHistoryItem.pridePercent != null ? (
                 <View style={styles.historySection}>
-                  <Text style={styles.historySectionTitle}>
-                    Fierté (en %)
-                  </Text>
+                  <Text style={styles.historySectionTitle}>Fierté (en %)</Text>
                   <Text style={styles.historySectionText}>
-                    {selectedHistoryItem.pridePercent}%
+                    Je me sens efficace à {selectedHistoryItem.pridePercent}%
+                    aujourd’hui.
                   </Text>
                 </View>
               ) : null}
