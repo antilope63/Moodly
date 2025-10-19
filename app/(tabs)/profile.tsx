@@ -90,6 +90,10 @@ const SVG_DEFAULT_WIDTH =
 const LEFT_AXIS_PADDING = 44; // Laisse de l'espace pour les libellés verticaux sans marcher sur le tracé
 const RIGHT_CHART_PADDING = 16; // Marge droite pour que les points ne soient pas coupés
 const MOOD_LEVELS = [5, 4, 3, 2, 1];
+const BOTTOM_SHEET_HEIGHT = Math.min(
+  Dimensions.get("window").height * 0.75,
+  620
+);
 
 type ManagerPillOption =
   | { key: "self"; label: string; type: "me" }
@@ -916,6 +920,7 @@ export function ProfileDashboard({
               )}
               keyExtractor={(item) => item.id.toString()}
               ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              style={styles.historyListScrollable}
               contentContainerStyle={styles.historyList}
               showsVerticalScrollIndicator={false}
             />
@@ -937,7 +942,11 @@ export function ProfileDashboard({
               <Text style={styles.modalCloseButton}>Fermer</Text>
             </Pressable>
           </View>
-          <View style={styles.modalOptionList}>
+          <ScrollView
+            style={styles.bottomSheetScrollArea}
+            contentContainerStyle={styles.modalOptionList}
+            showsVerticalScrollIndicator={false}
+          >
             <Pressable
               style={[
                 styles.timelineItem,
@@ -974,7 +983,7 @@ export function ProfileDashboard({
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       </BottomSheetModal>
     </Container>
@@ -1227,17 +1236,23 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingBottom: 44,
   },
+  bottomSheetScrollArea: {
+    flex: 1,
+  },
   bottomSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
-    maxHeight: "80%",
+    paddingHorizontal: 0,
+    paddingBottom: 32,
+    height: BOTTOM_SHEET_HEIGHT,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0, 0, 0, 0.05)",
   },
   bottomSheetContent: {
     gap: 18,
-    flexShrink: 1,
+    flex: 1,
+    paddingHorizontal: 20,
   },
   historyBackButton: {
     flexDirection: "row",
@@ -1258,6 +1273,9 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 8,
   },
+  historyListScrollable: {
+    flex: 1,
+  },
   historyEmptyState: {
     paddingVertical: 24,
     alignItems: "center",
@@ -1268,7 +1286,7 @@ const styles = StyleSheet.create({
     color: theme.colors.subtleLight,
   },
   historyDetailScroll: {
-    flexGrow: 0,
+    flex: 1,
   },
   historyDetailContent: {
     gap: 20,
