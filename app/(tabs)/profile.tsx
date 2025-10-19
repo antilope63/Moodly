@@ -1,3 +1,4 @@
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useManagedMoodHistory } from "@/hooks/use-managed-mood-history";
@@ -22,7 +23,6 @@ import {
   Dimensions,
   Easing,
   FlatList,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -89,10 +89,7 @@ const DEFAULT_CARD_PADDING = 16;
 const SVG_DEFAULT_WIDTH =
   Dimensions.get("window").width -
   (DEFAULT_OUTER_PADDING * 2 + DEFAULT_CARD_PADDING * 2); // Largeur utile intérieure à la carte
-const LEFT_AXIS_PADDING = 44; // Laisse de l'espace pour les libellés verticaux sans marcher sur le tracé
-const RIGHT_CHART_PADDING = 16; // Marge droite pour que les points ne soient pas coupés
-const HISTORY_SHEET_BASE_OFFSET =
-  Dimensions.get("window").height + 80; // Suffisamment grand pour masquer la feuille avant mesure
+const HORIZONTAL_PADDING = 16; // Marge de sécurité pour éviter la coupe des points
 const MOOD_LEVELS = [5, 4, 3, 2, 1];
 
 type ManagerPillOption =
@@ -112,10 +109,7 @@ const MoodEvolutionChart = ({
   const [chartWidth, setChartWidth] = useState<number>(SVG_DEFAULT_WIDTH);
   const [labelWidths, setLabelWidths] = useState<Record<number, number>>({});
   const currentWidth = Math.max(0, chartWidth || SVG_DEFAULT_WIDTH);
-  const drawingWidth = Math.max(
-    0,
-    currentWidth - LEFT_AXIS_PADDING - RIGHT_CHART_PADDING
-  );
+  const drawingWidth = Math.max(0, currentWidth - HORIZONTAL_PADDING * 2);
   const chartData = useMemo(() => {
     const today = new Date();
     const daysToShow = activePeriod === "Mois" ? 30 : 7;
@@ -142,10 +136,10 @@ const MoodEvolutionChart = ({
   const labelPositions = useMemo(() => {
     if (chartData.length === 0) return [];
     if (chartData.length === 1) {
-      return [LEFT_AXIS_PADDING + drawingWidth / 2];
+      return [HORIZONTAL_PADDING + drawingWidth / 2];
     }
     const step = drawingWidth / (chartData.length - 1);
-    return chartData.map((_, index) => LEFT_AXIS_PADDING + step * index);
+    return chartData.map((_, index) => HORIZONTAL_PADDING + step * index);
   }, [chartData, drawingWidth]);
 
   const points = useMemo(() => {
@@ -154,7 +148,7 @@ const MoodEvolutionChart = ({
         const y = getYForMoodValue(chartData[0].score);
         return [
           {
-            x: labelPositions[0] ?? drawingWidth / 2 + LEFT_AXIS_PADDING,
+            x: labelPositions[0] ?? drawingWidth / 2 + HORIZONTAL_PADDING,
             y,
             score: chartData[0].score,
           },
@@ -165,7 +159,7 @@ const MoodEvolutionChart = ({
     return chartData.map((point, index) => {
       const x = labelPositions[index];
       const y = getYForMoodValue(point.score);
-      return { x: x ?? LEFT_AXIS_PADDING, y, score: point.score };
+      return { x: x ?? HORIZONTAL_PADDING, y, score: point.score };
     });
   }, [chartData, labelPositions]);
 
@@ -220,20 +214,20 @@ const MoodEvolutionChart = ({
           return (
             <React.Fragment key={level}>
               <Line
-                x1={LEFT_AXIS_PADDING}
+                x1={HORIZONTAL_PADDING}
                 y1={y}
-                x2={currentWidth - RIGHT_CHART_PADDING}
+                x2={currentWidth - HORIZONTAL_PADDING}
                 y2={y}
                 stroke={theme.colors.borderLight}
                 strokeDasharray="4 4"
                 strokeWidth={1}
               />
               <SvgText
-                x={LEFT_AXIS_PADDING - 6}
+                x={HORIZONTAL_PADDING + 4}
                 y={y + 3}
                 fill={theme.colors.subtleLight}
                 fontSize={10}
-                textAnchor="end"
+                textAnchor="start"
               >
                 {`${level}/5`}
               </SvgText>
@@ -270,8 +264,7 @@ const MoodEvolutionChart = ({
       >
         {visibleLabelIndices.map((chartIndex) => {
           const label = chartData[chartIndex]?.label;
-          const xPosition =
-            labelPositions[chartIndex] ?? LEFT_AXIS_PADDING;
+          const xPosition = labelPositions[chartIndex] ?? HORIZONTAL_PADDING;
           const measuredWidth = labelWidths[chartIndex] ?? 0;
           return (
             <View
@@ -356,6 +349,8 @@ export function ProfileDashboard({
   const [teamIdToMembers, setTeamIdToMembers] = useState<
     Record<number, TeamMember[]>
   >({});
+  const [pickerStep, setPickerStep] = useState<1 | 2>(1);
+  const [pickerTeamId, setPickerTeamId] = useState<number | null>(null);
   const [managedTeamsError, setManagedTeamsError] = useState<string | null>(
     null
   );
@@ -380,82 +375,21 @@ export function ProfileDashboard({
   const periods = ["Semaine", "Mois"];
 
   // Animations bottom sheet (histoire + scope picker)
-  const historySheetProgress = useRef(new Animated.Value(0)).current;
-  const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
   const historyDetailProgress = useRef(new Animated.Value(0)).current;
-  const [historySheetHeight, setHistorySheetHeight] = useState(0);
-  const historySheetHiddenOffset = useMemo(() => {
-    if (historySheetHeight > 0) {
-      // On ajoute une marge pour s'assurer que la feuille sort complètement de l'écran
-      return historySheetHeight + 32;
-    }
-    return HISTORY_SHEET_BASE_OFFSET;
-  }, [historySheetHeight]);
-
-  const historySheetTranslateY = useMemo(
-    () =>
-      historySheetProgress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [historySheetHiddenOffset, 0],
-      }),
-    [historySheetProgress, historySheetHiddenOffset]
-  );
 
   const openHistoryModal = useCallback(() => {
-    historySheetProgress.stopAnimation();
-    historySheetProgress.setValue(0);
     historyDetailProgress.stopAnimation();
     historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
     setHistoryModalVisible(true);
-  }, [historyDetailProgress, historySheetProgress]);
+  }, [historyDetailProgress]);
 
   const closeHistoryModal = useCallback(() => {
     historyDetailProgress.stopAnimation();
     historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
-    historySheetProgress.stopAnimation();
-    Animated.timing(historySheetProgress, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setHistoryModalVisible(false));
-  }, [historyDetailProgress, historySheetProgress]);
-
-  const animateHistorySheetOpen = useCallback(() => {
-    historySheetProgress.stopAnimation();
-    Animated.timing(historySheetProgress, {
-      toValue: 1,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [historySheetProgress]);
-
-  useEffect(() => {
-    if (!isHistoryModalVisible) {
-      historySheetProgress.stopAnimation();
-      historySheetProgress.setValue(0);
-    }
-  }, [historySheetProgress, isHistoryModalVisible]);
-
-  useEffect(() => {
-    if (!isHistoryModalVisible) return;
-    animateHistorySheetOpen();
-  }, [isHistoryModalVisible, animateHistorySheetOpen]);
-
-  useEffect(() => {
-    if (!isScopePickerVisible) return;
-    scopeSheetTranslateY.setValue(300);
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScopePickerVisible]);
+    setHistoryModalVisible(false);
+  }, [historyDetailProgress]);
 
   const handleLogout = () => {
     logout();
@@ -535,17 +469,46 @@ export function ProfileDashboard({
     void loadAllMembers();
   }, [isManager, managedTeams, teamIdToMembers]);
 
+  const currentViewerLabel = useMemo(() => {
+    if (scope === "team") {
+      if (managedTeams.length === 1) {
+        return `équipe ${managedTeams[0].name}`;
+      }
+      if (managedTeams.length > 1) {
+        return "toutes mes équipes";
+      }
+      return summary?.team?.name
+        ? `équipe ${summary.team.name}`
+        : "toute l'équipe";
+    }
+    if (scope === "me") {
+      return summary?.username ?? user?.username ?? "moi";
+    }
+    const list: TeamMember[] = selectedTeamId
+      ? teamIdToMembers[selectedTeamId] ?? []
+      : [];
+    const found = list.find((m) => m.id === targetUserId);
+    return (
+      found?.label ??
+      (targetUserId
+        ? `Utilisateur ${String(targetUserId).slice(0, 8)}`
+        : "utilisateur")
+    );
+  }, [
+    scope,
+    summary?.team?.name,
+    user?.username,
+    selectedTeamId,
+    teamIdToMembers,
+    targetUserId,
+  ]);
+
   const openScopePicker = useCallback(() => {
     setScopePickerVisible(true);
   }, []);
   const closeScopePicker = useCallback(() => {
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 300,
-      duration: 200,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setScopePickerVisible(false));
-  }, [scopeSheetTranslateY]);
+    setScopePickerVisible(false);
+  }, []);
 
   const Container = embedded ? View : SafeAreaView;
 
@@ -554,74 +517,30 @@ export function ProfileDashboard({
 
   const managerUserPills = useMemo<ManagerPillOption[]>(() => {
     if (!isManager) return [];
-
-    const targetTeamIds: number[] = [];
-    if ((scope === "team" || scope === "user") && selectedTeamId != null) {
-      targetTeamIds.push(selectedTeamId);
-    }
-    if (
-      targetTeamIds.length === 0 &&
-      selectedTeamId != null &&
-      !targetTeamIds.includes(selectedTeamId)
-    ) {
-      targetTeamIds.push(selectedTeamId);
-    }
-    if (targetTeamIds.length === 0 && managedTeams.length === 1) {
-      targetTeamIds.push(managedTeams[0].id);
-    }
-    if (targetTeamIds.length === 0 && managedTeams.length > 1) {
-      targetTeamIds.push(...managedTeams.map((team) => team.id));
-    }
-
-    const seenMembers = new Set<string>();
-    const memberPills: ManagerPillOption[] = [];
-    targetTeamIds.forEach((teamId) => {
-      const members = teamIdToMembers[teamId] ?? [];
+    const uniqueMembers = new Map<string, { member: TeamMember; teamId: number }>();
+    managedTeams.forEach((team) => {
+      const members = teamIdToMembers[team.id] ?? [];
       members.forEach((member) => {
-        if (seenMembers.has(member.id)) return;
-        seenMembers.add(member.id);
-        memberPills.push({
-          key: `${teamId}:${member.id}`,
-          label: member.label,
-          userId: member.id,
-          teamId,
-          type: "user",
-        });
+        if (!uniqueMembers.has(member.id)) {
+          uniqueMembers.set(member.id, { member, teamId: team.id });
+        }
       });
     });
-
-    memberPills.sort((a, b) => a.label.localeCompare(b.label));
+    const members = Array.from(uniqueMembers.values())
+      .map(({ member, teamId }) => ({
+        key: `${teamId}:${member.id}`,
+        label: member.label,
+        userId: member.id,
+        teamId,
+        type: "user" as const,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
 
     return [
       { key: "self", label: managerSelfLabel, type: "me" as const },
-      ...memberPills,
+      ...members,
     ];
-  }, [
-    isManager,
-    managedTeams,
-    teamIdToMembers,
-    managerSelfLabel,
-    scope,
-    selectedTeamId,
-  ]);
-
-  const managerSelectedTeamName = useMemo(() => {
-    if (!isManager) return null;
-
-    const fallbackTeamFromSummary = summary?.team?.name ?? null;
-    if (selectedTeamId != null) {
-      const selectedTeam = managedTeams.find((team) => team.id === selectedTeamId);
-      if (selectedTeam) {
-        return selectedTeam.name;
-      }
-    }
-
-    if (managedTeams.length === 1) {
-      return managedTeams[0]?.name ?? null;
-    }
-
-    return fallbackTeamFromSummary;
-  }, [isManager, managedTeams, selectedTeamId, summary?.team?.name]);
+  }, [isManager, managedTeams, teamIdToMembers, managerSelfLabel]);
 
   const handleSelectManagerPill = useCallback(
     (option: ManagerPillOption) => {
@@ -629,11 +548,15 @@ export function ProfileDashboard({
         setScope("me");
         setSelectedTeamId(null);
         setTargetUserId(null);
+        setPickerStep(1);
+        setPickerTeamId(null);
         return;
       }
       setScope("user");
       setSelectedTeamId(option.teamId);
       setTargetUserId(option.userId);
+      setPickerStep(1);
+      setPickerTeamId(null);
     },
     []
   );
@@ -741,16 +664,61 @@ export function ProfileDashboard({
             {isManager ? (
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.managerContextText}>
-                    {managerSelectedTeamName
-                      ? `Données de l'équipe ${managerSelectedTeamName}`
-                      : "Sélectionnez une équipe"}
+                  <Text style={{ color: theme.colors.subtleLight, flex: 1 }}>
+                    Données de :{" "}
+                    <Text
+                      style={{
+                        color: theme.colors.foregroundLight,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {currentViewerLabel}
+                    </Text>
                   </Text>
                   <Pressable onPress={openScopePicker}>
                     <Text style={styles.seeAllText}>Changer</Text>
                   </Pressable>
                 </View>
                 {/* Debug view désactivée */}
+                {showManagerPills ? (
+                  <ScrollView
+                    horizontal
+                    style={styles.managerPillScroll}
+                    contentContainerStyle={styles.managerPillContent}
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    {managerUserPills.map((option) => {
+                      const active = isPillActive(option);
+                      return (
+                        <Pressable
+                          key={option.key}
+                          onPress={() => handleSelectManagerPill(option)}
+                          style={[
+                            styles.managerPill,
+                            active
+                              ? styles.managerPillActive
+                              : styles.managerPillInactive,
+                          ]}
+                        >
+                          <UserAvatar
+                            name={option.label}
+                            size={28}
+                            style={styles.managerPillAvatar}
+                          />
+                          <Text
+                            style={[
+                              styles.managerPillText,
+                              active && styles.managerPillTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                ) : null}
               </View>
             ) : null}
 
@@ -802,53 +770,10 @@ export function ProfileDashboard({
                 data={historyItems}
                 activePeriod={activePeriod}
               />
-              {showManagerPills ? (
-                <View style={styles.managerPillSection}>
-                  <Text style={styles.managerPillLabel}>Voir les données de</Text>
-                  <ScrollView
-                    horizontal
-                    style={styles.managerPillScroll}
-                    contentContainerStyle={styles.managerPillContent}
-                    showsHorizontalScrollIndicator={false}
-                  >
-                    {managerUserPills.map((option) => {
-                      const active = isPillActive(option);
-                      return (
-                        <Pressable
-                          key={option.key}
-                          onPress={() => handleSelectManagerPill(option)}
-                          style={[
-                            styles.managerPill,
-                            active
-                              ? styles.managerPillActive
-                              : styles.managerPillInactive,
-                          ]}
-                          accessibilityRole="button"
-                        >
-                          <UserAvatar
-                            name={option.label}
-                            size={18}
-                            style={styles.managerPillAvatar}
-                          />
-                          <Text
-                            style={[
-                              styles.managerPillText,
-                              active && styles.managerPillTextActive,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {option.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              ) : null}
             </View>
 
             <View style={styles.card}>
-              <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.cardTitlePrimary}>
                   Historique des moods
                 </Text>
@@ -866,47 +791,67 @@ export function ProfileDashboard({
         )}
       </ScrollView>
 
-      <Modal
-        animationType="none"
-        transparent
+      <BottomSheetModal
         visible={isHistoryModalVisible}
-        onRequestClose={closeHistoryModal}
-        onShow={animateHistorySheetOpen}
+        onClose={closeHistoryModal}
+        sheetStyle={styles.historySheet}
+        showHandle={false}
       >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeHistoryModal}
-            accessibilityRole="button"
-          />
+        <View style={styles.sheetHandle} />
+
+        <View style={styles.historyContentWrapper}>
+          <Animated.View
+            style={[
+              styles.historyListContainer,
+              {
+                opacity: historyListOpacity,
+                transform: [{ translateX: historyListTranslateX }],
+              },
+            ]}
+            pointerEvents={selectedHistoryItem ? "none" : "auto"}
+          >
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyTitle}>Historique des moods</Text>
+              <Pressable
+                onPress={closeHistoryModal}
+                accessibilityRole="button"
+              >
+                <Text style={styles.historyCloseLabel}>Fermer</Text>
+              </Pressable>
+            </View>
+            <FlatList
+              data={historyItems}
+              renderItem={({ item }) => (
+                <TimelineItem item={item} onPress={showHistoryDetail} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              contentContainerStyle={styles.historyList}
+              showsVerticalScrollIndicator={false}
+            />
+          </Animated.View>
 
           <Animated.View
             style={[
-              styles.historySheet,
-              { transform: [{ translateY: historySheetTranslateY }] },
+              styles.historyDetailContainer,
+              {
+                opacity: historyDetailOpacity,
+                transform: [{ translateX: historyDetailTranslateX }],
+              },
             ]}
-            onLayout={(event) => {
-              const { height } = event.nativeEvent.layout;
-              setHistorySheetHeight((prev) =>
-                Math.abs(prev - height) < 1 ? prev : height
-              );
-            }}
+            pointerEvents={selectedHistoryItem ? "auto" : "none"}
           >
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.historyContentWrapper}>
-              <Animated.View
-                style={[
-                  styles.historyListContainer,
-                  {
-                    opacity: historyListOpacity,
-                    transform: [{ translateX: historyListTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "none" : "auto"}
-              >
-                <View style={styles.historyHeader}>
-                  <Text style={styles.historyTitle}>Historique des moods</Text>
+            {selectedHistoryItem ? (
+              <>
+                <View style={styles.historyDetailHeader}>
+                  <Pressable
+                    onPress={hideHistoryDetail}
+                    style={styles.historyBackButton}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.historyBackIcon}>←</Text>
+                    <Text style={styles.historyBackLabel}>Voir tout</Text>
+                  </Pressable>
                   <Pressable
                     onPress={closeHistoryModal}
                     accessibilityRole="button"
@@ -914,165 +859,110 @@ export function ProfileDashboard({
                     <Text style={styles.historyCloseLabel}>Fermer</Text>
                   </Pressable>
                 </View>
-                <FlatList
-                  data={historyItems}
-                  renderItem={({ item }) => (
-                    <TimelineItem item={item} onPress={showHistoryDetail} />
-                  )}
-                  keyExtractor={(item) => item.id.toString()}
-                  ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                  contentContainerStyle={styles.historyList}
+
+                <ScrollView
+                  style={styles.historyDetailScroll}
+                  contentContainerStyle={styles.historyDetailContent}
                   showsVerticalScrollIndicator={false}
-                />
-              </Animated.View>
-
-              <Animated.View
-                style={[
-                  styles.historyDetailContainer,
-                  {
-                    opacity: historyDetailOpacity,
-                    transform: [{ translateX: historyDetailTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "auto" : "none"}
-              >
-                {selectedHistoryItem ? (
-                  <>
-                    <View style={styles.historyDetailHeader}>
-                      <Pressable
-                        onPress={hideHistoryDetail}
-                        style={styles.historyBackButton}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyBackIcon}>←</Text>
-                        <Text style={styles.historyBackLabel}>Voir tout</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={closeHistoryModal}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyCloseLabel}>Fermer</Text>
-                      </Pressable>
+                >
+                  <View style={styles.historyDetailMoodRow}>
+                    <View style={styles.historyDetailEmojiSurface}>
+                      <Text style={styles.historyDetailEmoji}>
+                        {moodValueToEmoji(selectedHistoryItem.moodValue)}
+                      </Text>
                     </View>
+                    <View style={styles.historyDetailTexts}>
+                      <Text style={styles.historyDetailMoodTitle}>
+                        Mood {selectedHistoryItem.moodValue}/5
+                      </Text>
+                      <Text style={styles.historyDetailSubtitle}>
+                        {formatFullDateTime(selectedHistoryItem.loggedAt)}
+                      </Text>
+                    </View>
+                  </View>
 
-                    <ScrollView
-                      style={styles.historyDetailScroll}
-                      contentContainerStyle={styles.historyDetailContent}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      <View style={styles.historyDetailMoodRow}>
-                        <View style={styles.historyDetailEmojiSurface}>
-                          <Text style={styles.historyDetailEmoji}>
-                            {moodValueToEmoji(selectedHistoryItem.moodValue)}
-                          </Text>
-                        </View>
-                        <View style={styles.historyDetailTexts}>
-                          <Text style={styles.historyDetailMoodTitle}>
-                            Mood {selectedHistoryItem.moodValue}/5
-                          </Text>
-                          <Text style={styles.historyDetailSubtitle}>
-                            {formatFullDateTime(selectedHistoryItem.loggedAt)}
-                          </Text>
-                        </View>
-                      </View>
+                  {selectedHistoryItem.reasonSummary ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>Résumé</Text>
+                      <Text style={styles.historySectionText}>
+                        {selectedHistoryItem.reasonSummary}
+                      </Text>
+                    </View>
+                  ) : null}
 
-                      {selectedHistoryItem.reasonSummary ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Résumé</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.reasonSummary}
-                          </Text>
-                        </View>
-                      ) : null}
+                  {selectedHistoryItem.note ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>Note</Text>
+                      <Text style={styles.historySectionText}>
+                        {selectedHistoryItem.note}
+                      </Text>
+                    </View>
+                  ) : null}
 
-                      {selectedHistoryItem.note ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Note</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.note}
-                          </Text>
-                        </View>
-                      ) : null}
+                  <View style={styles.historySection}>
+                    <Text style={styles.historySectionTitle}>Contexte</Text>
+                    <Text style={styles.historySectionText}>
+                      {contextLabelFromMood(selectedHistoryItem.context)}
+                    </Text>
+                  </View>
 
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>Contexte</Text>
-                        <Text style={styles.historySectionText}>
-                          {contextLabelFromMood(selectedHistoryItem.context)}
-                        </Text>
-                      </View>
+                  <View style={styles.historySection}>
+                    <Text style={styles.historySectionTitle}>Visibilité</Text>
+                    <Text style={styles.historySectionText}>
+                      {describeVisibility(selectedHistoryItem)}
+                    </Text>
+                  </View>
 
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>
-                          Visibilité
-                        </Text>
-                        <Text style={styles.historySectionText}>
-                          {describeVisibility(selectedHistoryItem)}
-                        </Text>
-                      </View>
-
-                      {selectedHistoryItem.categories?.length ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>
-                            Catégories
-                          </Text>
-                          <View style={styles.historyTagRow}>
-                            {selectedHistoryItem.categories.map((category) => (
-                              <View key={category.id} style={styles.historyTag}>
-                                <Text style={styles.historyTagText}>
-                                  {category.name}
-                                </Text>
-                              </View>
-                            ))}
+                  {selectedHistoryItem.categories?.length ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>
+                        Catégories
+                      </Text>
+                      <View style={styles.historyTagRow}>
+                        {selectedHistoryItem.categories.map((category) => (
+                          <View key={category.id} style={styles.historyTag}>
+                            <Text style={styles.historyTagText}>
+                              {category.name}
+                            </Text>
                           </View>
-                        </View>
-                      ) : null}
-                    </ScrollView>
-                  </>
-                ) : null}
-              </Animated.View>
-            </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                </ScrollView>
+              </>
+            ) : null}
           </Animated.View>
         </View>
-      </Modal>
+      </BottomSheetModal>
       {/* Sélecteur de portée */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      <BottomSheetModal
         visible={isScopePickerVisible}
-        onRequestClose={closeScopePicker}
+        onClose={closeScopePicker}
+        sheetStyle={styles.historySheet}
+        showHandle={false}
       >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeScopePicker}
-            accessibilityRole="button"
-          />
-
-          <Animated.View
-            style={[
-              styles.historySheet,
-              { transform: [{ translateY: scopeSheetTranslateY }] },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
-                Choisissez la vue à afficher
-              </Text>
-              <Pressable onPress={closeScopePicker}>
-                <Text style={styles.modalCloseButton}>Fermer</Text>
-              </Pressable>
-            </View>
-            <View style={styles.modalOptionList}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
+            {pickerStep === 1
+              ? "De qui voulez-vous voir les données ?"
+              : "De quel employé voulez-vous voir les données ?"}
+          </Text>
+          <Pressable onPress={closeScopePicker}>
+            <Text style={styles.modalCloseButton}>Fermer</Text>
+          </Pressable>
+        </View>
+        <View style={{ gap: 8, paddingBottom: 44 }}>
+          {pickerStep === 1 ? (
+            <>
               <Pressable
-                style={[
-                  styles.timelineItem,
-                  scope === "me" ? styles.timelineItemActive : null,
-                ]}
+                style={styles.timelineItem}
                 onPress={() => {
                   setScope("me");
                   setSelectedTeamId(null);
                   setTargetUserId(null);
+                  setPickerStep(1);
                   closeScopePicker();
                 }}
               >
@@ -1080,30 +970,81 @@ export function ProfileDashboard({
                   Moi ({summary?.username ?? user?.username ?? "—"})
                 </Text>
               </Pressable>
-              {managedTeams.map((team) => {
-                const isActive = selectedTeamId === team.id && scope !== "me";
-                return (
+              {managedTeams.map((t) => (
+                <Pressable
+                  key={t.id}
+                  style={styles.timelineItem}
+                  onPress={async () => {
+                    setPickerTeamId(t.id);
+                    if (!teamIdToMembers[t.id]) {
+                      try {
+                        const list = await fetchTeamMembers(t.id, {
+                          excludeUserId: user?.id ?? undefined,
+                        });
+                        setTeamIdToMembers((prev) => ({
+                          ...prev,
+                          [t.id]: list,
+                        }));
+                      } catch {
+                        setTeamIdToMembers((prev) => ({
+                          ...prev,
+                          [t.id]: [],
+                        }));
+                      }
+                    }
+                    setPickerStep(2);
+                  }}
+                >
+                  <Text style={styles.timelineMood}>Équipe {t.name}</Text>
+                </Pressable>
+              ))}
+            </>
+          ) : (
+            <>
+              <Pressable
+                style={styles.timelineItem}
+                onPress={() => {
+                  setScope("team");
+                  setSelectedTeamId(pickerTeamId);
+                  setTargetUserId(null);
+                  setPickerStep(1);
+                  setPickerTeamId(null);
+                  closeScopePicker();
+                }}
+              >
+                <Text style={styles.timelineMood}>Toute l'équipe</Text>
+              </Pressable>
+              {(pickerTeamId ? teamIdToMembers[pickerTeamId] ?? [] : []).map(
+                (m) => (
                   <Pressable
-                    key={team.id}
-                    style={[
-                      styles.timelineItem,
-                      isActive ? styles.timelineItemActive : null,
-                    ]}
+                    key={m.id}
+                    style={styles.timelineItem}
                     onPress={() => {
-                      setScope("team");
-                      setSelectedTeamId(team.id);
-                      setTargetUserId(null);
+                      setScope("user");
+                      setSelectedTeamId(pickerTeamId);
+                      setTargetUserId(m.id);
+                      setPickerStep(1);
+                      setPickerTeamId(null);
                       closeScopePicker();
                     }}
                   >
-                    <Text style={styles.timelineMood}>Équipe {team.name}</Text>
+                    <Text style={styles.timelineMood}>{m.label}</Text>
                   </Pressable>
-                );
-              })}
-            </View>
-          </Animated.View>
+                )
+              )}
+              <Pressable
+                style={[styles.timelineItem, { justifyContent: "center" }]}
+                onPress={() => {
+                  setPickerStep(1);
+                  setPickerTeamId(null);
+                }}
+              >
+                <Text style={styles.timelineMood}>← Retour</Text>
+              </Pressable>
+            </>
+          )}
         </View>
-      </Modal>
+      </BottomSheetModal>
     </Container>
   );
 }
@@ -1176,47 +1117,31 @@ const styles = StyleSheet.create({
     color: theme.colors.subtleLight,
     fontWeight: "500",
   },
-  managerPillSection: {
-    marginTop: 20,
-    gap: 10,
-  },
-  managerPillLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.subtleLight,
-  },
-  managerPillScroll: { marginTop: 4 },
-  managerPillContent: { paddingVertical: 2, paddingRight: 10 },
+  managerPillScroll: { marginTop: 16 },
+  managerPillContent: { paddingVertical: 4, paddingRight: 12 },
   managerPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.35)",
-    backgroundColor: "rgba(241, 245, 249, 0.9)",
   },
-  managerPillAvatar: { marginRight: 6, borderRadius: 999 },
+  managerPillAvatar: { marginRight: 8 },
   managerPillActive: { backgroundColor: theme.colors.primary },
   managerPillInactive: {
-    backgroundColor: "rgba(248, 250, 252, 0.95)",
+    backgroundColor: theme.colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.5)",
   },
   managerPillText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "600",
     color: theme.colors.subtleLight,
-    maxWidth: 96,
+    maxWidth: 120,
     flexShrink: 1,
   },
   managerPillTextActive: { color: "white" },
-  managerContextText: {
-    flex: 1,
-    color: theme.colors.foregroundLight,
-    fontSize: 14,
-    fontWeight: "600",
-  },
   cardHeader: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -1264,11 +1189,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     backgroundColor: theme.colors.backgroundLight,
-  },
-  timelineItemActive: {
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-    backgroundColor: "rgba(75, 147, 242, 0.08)",
   },
   timelineItemPressed: {
     opacity: 0.85,
@@ -1349,10 +1269,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.primary,
     fontWeight: "600",
-  },
-  modalOptionList: {
-    gap: 8,
-    paddingBottom: 44,
   },
   historyOverlay: {
     flex: 1,

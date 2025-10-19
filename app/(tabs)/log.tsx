@@ -19,6 +19,12 @@ import { DEFAULT_VISIBILITY } from "@/components/mood/mood-publisher-card";
 import { MoodScale } from "@/components/mood/mood-scale";
 import { VisibilityForm } from "@/components/mood/visibility-form";
 import { getMoodOptionByValue } from "@/constants/mood";
+import {
+  ENERGY_OPTIONS,
+  FREEDOM_OPTIONS,
+  SUPPORT_OPTIONS,
+  type ReflectionOption,
+} from "@/constants/reflection-options";
 import { Palette } from "@/constants/theme";
 import { useAuth } from "@/providers/auth-provider";
 import {
@@ -47,67 +53,6 @@ const CONTEXT_LABEL: Record<MoodContext, string> = {
   personal: "Personnel",
   mixed: "Mixte",
 };
-
-type ReflectionOption = {
-  key: string;
-  emoji: string;
-  message: string;
-};
-
-const FREEDOM_OPTIONS: ReflectionOption[] = [
-  {
-    key: "free",
-    emoji: "🙌",
-    message: "Je me sens libre de m’organiser comme je veux aujourd’hui.",
-  },
-  {
-    key: "mixed",
-    emoji: "😐",
-    message:
-      "J’ai eu un peu de liberté, mais certaines décisions étaient imposées.",
-  },
-  {
-    key: "tight",
-    emoji: "😩",
-    message: "J’ai dû suivre des consignes sans pouvoir donner mon avis.",
-  },
-];
-
-const SUPPORT_OPTIONS: ReflectionOption[] = [
-  {
-    key: "supported",
-    emoji: "🌟",
-    message: "Je me sens soutenu(e) par mon équipe / mon manager.",
-  },
-  {
-    key: "neutral",
-    emoji: "🙂",
-    message: "Je me suis senti légèrement délaissé.",
-  },
-  {
-    key: "isolated",
-    emoji: "😞",
-    message: "Je me suis senti isolé ou ignoré.",
-  },
-];
-
-const ENERGY_OPTIONS: ReflectionOption[] = [
-  {
-    key: "fresh",
-    emoji: "🌿",
-    message: "J’ai eu le temps de souffler et de garder un bon rythme aujourd’hui.",
-  },
-  {
-    key: "busy",
-    emoji: "😐",
-    message: "La journée a été chargée, mais encore gérable.",
-  },
-  {
-    key: "overwhelmed",
-    emoji: "🫠",
-    message: "J’ai eu la tête sous l’eau toute la journée.",
-  },
-];
 
 export default function LogMoodScreen() {
   const router = useRouter();
@@ -587,11 +532,15 @@ export default function LogMoodScreen() {
               max={100}
               step={5}
               onValueChange={(values) => setPrideValue(values[0] ?? 0)}
+              style={styles.slider}
             >
-              <Slider.Track>
-                <Slider.TrackActive />
+              <Slider.Track unstyled style={styles.sliderTrack}>
+                <Slider.TrackActive
+                  unstyled
+                  style={styles.sliderTrackActive}
+                />
               </Slider.Track>
-              <Slider.Thumb />
+              <Slider.Thumb unstyled style={styles.sliderThumb} />
             </Slider>
             <Text style={styles.reflectionMessage}>{prideLabel}</Text>
           </View>
@@ -712,6 +661,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Palette.textSecondary,
     lineHeight: 20,
+  },
+  slider: {
+    marginTop: 12,
+  },
+  sliderTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "#E5E7F5",
+  },
+  sliderTrackActive: {
+    backgroundColor: Palette.bleuMarin,
+    borderRadius: 999,
+  },
+  sliderThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    margin: -10,
+    padding: 0,
+    shadowOpacity: 0,
   },
   reflectionRow: {
     flexDirection: "row",

@@ -46,9 +46,26 @@ export const loginWithCredentials = async (
   const rawRoleMeta = ((user as any)?.app_metadata?.role ?? (user as any)?.user_metadata?.role) ?? null;
   const role = roleFromMembership ?? resolveRoleTypeFromMetadata(rawRoleMeta);
 
+  let displayName = user.email?.split('@')[0] ?? 'user';
+  try {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!profileError) {
+      const normalizedUsername = (profileData?.username ?? '').trim();
+      if (normalizedUsername) {
+        displayName = normalizedUsername;
+      }
+    }
+  } catch {
+    // Ignore profile lookup failures and fall back to email prefix.
+  }
+
   const basicUser: BasicUser = {
     id: user.id, // CORRIGÉ : On utilise le vrai ID string de Supabase
-    username: user.email?.split('@')[0] ?? 'user',
+    username: displayName,
     email: user.email ?? undefined,
     role,
     rawRole: role,
