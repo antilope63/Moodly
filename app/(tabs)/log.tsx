@@ -675,11 +675,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   sliderThumb: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Palette.bleuMarin,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "transparent",
     borderWidth: 0,
+    margin: -10,
+    padding: 0,
     shadowOpacity: 0,
   },
   reflectionRow: {
