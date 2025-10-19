@@ -1,6 +1,9 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { getMoodOptionByValue } from "@/constants/mood";
+import { getReflectionOption } from "@/constants/reflection-options";
 import { Palette } from "@/constants/theme";
 import type { MoodEntry, VisibilitySettings } from "@/types/mood";
 
@@ -36,6 +39,14 @@ export const MoodCard = ({
   mood: MoodEntry;
   highlightReason?: boolean;
 }) => {
+  const [showFullMessage, setShowFullMessage] = useState(false);
+  const [isDetailsVisible, setDetailsVisible] = useState(false);
+
+  useEffect(() => {
+    setShowFullMessage(false);
+    setDetailsVisible(false);
+  }, [mood.id]);
+
   const option = getMoodOptionByValue(mood.moodValue);
   const accentColor =
     {
@@ -54,11 +65,58 @@ export const MoodCard = ({
   const authorName =
     mood.isAnonymous || !mood.loggedBy ? "Un collègue" : mood.loggedBy.username;
   const teamLabel = mood.team?.name ? `Équipe ${mood.team.name}` : null;
-  const primaryMessage =
-    (highlightReason && mood.reasonSummary) ||
-    mood.note ||
-    mood.reasonSummary ||
-    null;
+  const noteText = mood.note?.trim() ?? null;
+  const reasonText = mood.reasonSummary?.trim() ?? null;
+  const primaryMessage = useMemo(() => {
+    if (highlightReason && reasonText) {
+      return reasonText;
+    }
+    if (noteText) {
+      return noteText;
+    }
+    return reasonText;
+  }, [highlightReason, noteText, reasonText]);
+  const normalizedMessage = primaryMessage ?? null;
+  const hasLongMessage = (normalizedMessage?.length ?? 0) > 180;
+
+  const detailOptions = useMemo(
+    () =>
+      [
+        getReflectionOption(mood.freedomChoice),
+        getReflectionOption(mood.supportChoice),
+        getReflectionOption(mood.energyChoice),
+      ].filter(
+        (
+          option
+        ): option is NonNullable<ReturnType<typeof getReflectionOption>> =>
+          Boolean(option)
+      ),
+    [mood.energyChoice, mood.freedomChoice, mood.supportChoice]
+  );
+
+  const prideDetail =
+    typeof mood.pridePercent === "number"
+      ? {
+          key: "pride",
+          emoji: "💪",
+          message: `Je me sens efficace à ${mood.pridePercent}% aujourd’hui.`,
+        }
+      : null;
+
+  const moodDetails = prideDetail
+    ? [...detailOptions, prideDetail]
+    : detailOptions;
+  const hasDetails = Boolean(moodDetails.length) || Boolean(noteText);
+
+  const openDetails = useCallback(() => {
+    if (hasDetails) {
+      setDetailsVisible(true);
+    }
+  }, [hasDetails]);
+
+  const closeDetails = useCallback(() => {
+    setDetailsVisible(false);
+  }, []);
 
   return (
     <View style={styles.card}>
@@ -84,8 +142,37 @@ export const MoodCard = ({
           </View>
           <View style={styles.messageColumn}>
             <Text style={styles.title}>{option.title}</Text>
-            {primaryMessage ? (
-              <Text style={styles.note}>{primaryMessage}</Text>
+            {normalizedMessage ? (
+              <>
+                <Text
+                  style={styles.note}
+                  numberOfLines={showFullMessage ? undefined : 2}
+                >
+                  {normalizedMessage}
+                </Text>
+                {hasLongMessage ? (
+                  <Pressable
+                    onPress={() => setShowFullMessage((current) => !current)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.noteToggle}>
+                      {showFullMessage ? "Afficher moins" : "Afficher plus"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
+            {hasDetails ? (
+              <Pressable
+                onPress={openDetails}
+                style={({ pressed }) => [
+                  styles.detailButton,
+                  pressed && styles.detailButtonPressed,
+                ]}
+                accessibilityRole="button"
+              >
+                <Text style={styles.detailButtonLabel}>Voir les détails</Text>
+              </Pressable>
             ) : null}
             <Text style={styles.timestamp}>{formatDate(mood.loggedAt)}</Text>
           </View>
@@ -97,6 +184,46 @@ export const MoodCard = ({
           </Text>
         </View>
       </View>
+      <BottomSheetModal
+        visible={isDetailsVisible}
+        onClose={closeDetails}
+        sheetStyle={styles.modalSheet}
+        showHandle={false}
+        testID="mood-details-sheet"
+      >
+        <View style={styles.modalGrabber} />
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Détails du mood</Text>
+          <Pressable
+            onPress={closeDetails}
+            accessibilityRole="button"
+            style={styles.modalClose}
+          >
+            <Text style={styles.modalCloseLabel}>Fermer</Text>
+          </Pressable>
+        </View>
+        <View style={styles.modalContent}>
+          {noteText ? (
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Note</Text>
+              <Text style={styles.modalSectionText}>{noteText}</Text>
+            </View>
+          ) : null}
+          {moodDetails.length ? (
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Ressentis</Text>
+              {moodDetails.map((detail) => (
+                <View key={detail.key} style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailText}>
+                    {detail.emoji ? `${detail.emoji} ` : ""}
+                    {detail.message}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </BottomSheetModal>
     </View>
   );
 };
@@ -116,7 +243,7 @@ const styles = StyleSheet.create({
   },
   innerCard: {
     flex: 1,
-    backgroundColor: Palette.whiteBackground,
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 20,
     gap: 16,
@@ -193,9 +320,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  noteToggle: {
+    color: Palette.bleuMarin,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  detailButton: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#F2F4FF",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  detailButtonPressed: {
+    opacity: 0.7,
+  },
+  detailButtonLabel: {
+    color: Palette.bleuMarin,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   timestamp: {
     fontSize: 12,
     color: "#8A8CA5",
+    marginTop: 6,
   },
   footerRow: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -205,5 +354,69 @@ const styles = StyleSheet.create({
   visibility: {
     color: "#8A8CA5",
     fontSize: 12,
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  modalGrabber: {
+    alignSelf: "center",
+    height: 6,
+    width: 48,
+    borderRadius: 999,
+    backgroundColor: "#D8DBE8",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Palette.textPrimary,
+  },
+  modalClose: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  modalCloseLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Palette.bleuMarin,
+  },
+  modalContent: {
+    gap: 20,
+  },
+  modalSection: {
+    gap: 8,
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Palette.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  modalSectionText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Palette.textPrimary,
+  },
+  modalDetailRow: {
+    backgroundColor: "#F2F4FF",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  modalDetailText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Palette.textPrimary,
   },
 });

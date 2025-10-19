@@ -1,3 +1,4 @@
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useManagedMoodHistory } from "@/hooks/use-managed-mood-history";
@@ -22,7 +23,6 @@ import {
   Dimensions,
   Easing,
   FlatList,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -375,45 +375,21 @@ export function ProfileDashboard({
   const periods = ["Semaine", "Mois"];
 
   // Animations bottom sheet (histoire + scope picker)
-  const historySheetTranslateY = useRef(new Animated.Value(300)).current;
-  const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
   const historyDetailProgress = useRef(new Animated.Value(0)).current;
 
   const openHistoryModal = useCallback(() => {
+    historyDetailProgress.stopAnimation();
+    historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
     setHistoryModalVisible(true);
-    historyDetailProgress.setValue(0);
-    Animated.timing(historySheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [historyDetailProgress, historySheetTranslateY]);
+  }, [historyDetailProgress]);
 
   const closeHistoryModal = useCallback(() => {
     historyDetailProgress.stopAnimation();
     historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
-    Animated.timing(historySheetTranslateY, {
-      toValue: 300,
-      duration: 200,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setHistoryModalVisible(false));
-  }, [historyDetailProgress, historySheetTranslateY]);
-
-  useEffect(() => {
-    if (!isScopePickerVisible) return;
-    scopeSheetTranslateY.setValue(300);
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScopePickerVisible]);
+    setHistoryModalVisible(false);
+  }, [historyDetailProgress]);
 
   const handleLogout = () => {
     logout();
@@ -531,13 +507,8 @@ export function ProfileDashboard({
     setScopePickerVisible(true);
   }, []);
   const closeScopePicker = useCallback(() => {
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 300,
-      duration: 200,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setScopePickerVisible(false));
-  }, [scopeSheetTranslateY]);
+    setScopePickerVisible(false);
+  }, []);
 
   const Container = embedded ? View : SafeAreaView;
 
@@ -820,40 +791,67 @@ export function ProfileDashboard({
         )}
       </ScrollView>
 
-      <Modal
-        animationType="none"
-        transparent
+      <BottomSheetModal
         visible={isHistoryModalVisible}
-        onRequestClose={closeHistoryModal}
+        onClose={closeHistoryModal}
+        sheetStyle={styles.historySheet}
+        showHandle={false}
       >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeHistoryModal}
-            accessibilityRole="button"
-          />
+        <View style={styles.sheetHandle} />
+
+        <View style={styles.historyContentWrapper}>
+          <Animated.View
+            style={[
+              styles.historyListContainer,
+              {
+                opacity: historyListOpacity,
+                transform: [{ translateX: historyListTranslateX }],
+              },
+            ]}
+            pointerEvents={selectedHistoryItem ? "none" : "auto"}
+          >
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyTitle}>Historique des moods</Text>
+              <Pressable
+                onPress={closeHistoryModal}
+                accessibilityRole="button"
+              >
+                <Text style={styles.historyCloseLabel}>Fermer</Text>
+              </Pressable>
+            </View>
+            <FlatList
+              data={historyItems}
+              renderItem={({ item }) => (
+                <TimelineItem item={item} onPress={showHistoryDetail} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              contentContainerStyle={styles.historyList}
+              showsVerticalScrollIndicator={false}
+            />
+          </Animated.View>
 
           <Animated.View
             style={[
-              styles.historySheet,
-              { transform: [{ translateY: historySheetTranslateY }] },
+              styles.historyDetailContainer,
+              {
+                opacity: historyDetailOpacity,
+                transform: [{ translateX: historyDetailTranslateX }],
+              },
             ]}
+            pointerEvents={selectedHistoryItem ? "auto" : "none"}
           >
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.historyContentWrapper}>
-              <Animated.View
-                style={[
-                  styles.historyListContainer,
-                  {
-                    opacity: historyListOpacity,
-                    transform: [{ translateX: historyListTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "none" : "auto"}
-              >
-                <View style={styles.historyHeader}>
-                  <Text style={styles.historyTitle}>Historique des moods</Text>
+            {selectedHistoryItem ? (
+              <>
+                <View style={styles.historyDetailHeader}>
+                  <Pressable
+                    onPress={hideHistoryDetail}
+                    style={styles.historyBackButton}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.historyBackIcon}>←</Text>
+                    <Text style={styles.historyBackLabel}>Voir tout</Text>
+                  </Pressable>
                   <Pressable
                     onPress={closeHistoryModal}
                     accessibilityRole="button"
@@ -861,252 +859,192 @@ export function ProfileDashboard({
                     <Text style={styles.historyCloseLabel}>Fermer</Text>
                   </Pressable>
                 </View>
-                <FlatList
-                  data={historyItems}
-                  renderItem={({ item }) => (
-                    <TimelineItem item={item} onPress={showHistoryDetail} />
-                  )}
-                  keyExtractor={(item) => item.id.toString()}
-                  ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                  contentContainerStyle={styles.historyList}
+
+                <ScrollView
+                  style={styles.historyDetailScroll}
+                  contentContainerStyle={styles.historyDetailContent}
                   showsVerticalScrollIndicator={false}
-                />
-              </Animated.View>
-
-              <Animated.View
-                style={[
-                  styles.historyDetailContainer,
-                  {
-                    opacity: historyDetailOpacity,
-                    transform: [{ translateX: historyDetailTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "auto" : "none"}
-              >
-                {selectedHistoryItem ? (
-                  <>
-                    <View style={styles.historyDetailHeader}>
-                      <Pressable
-                        onPress={hideHistoryDetail}
-                        style={styles.historyBackButton}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyBackIcon}>←</Text>
-                        <Text style={styles.historyBackLabel}>Voir tout</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={closeHistoryModal}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyCloseLabel}>Fermer</Text>
-                      </Pressable>
+                >
+                  <View style={styles.historyDetailMoodRow}>
+                    <View style={styles.historyDetailEmojiSurface}>
+                      <Text style={styles.historyDetailEmoji}>
+                        {moodValueToEmoji(selectedHistoryItem.moodValue)}
+                      </Text>
                     </View>
+                    <View style={styles.historyDetailTexts}>
+                      <Text style={styles.historyDetailMoodTitle}>
+                        Mood {selectedHistoryItem.moodValue}/5
+                      </Text>
+                      <Text style={styles.historyDetailSubtitle}>
+                        {formatFullDateTime(selectedHistoryItem.loggedAt)}
+                      </Text>
+                    </View>
+                  </View>
 
-                    <ScrollView
-                      style={styles.historyDetailScroll}
-                      contentContainerStyle={styles.historyDetailContent}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      <View style={styles.historyDetailMoodRow}>
-                        <View style={styles.historyDetailEmojiSurface}>
-                          <Text style={styles.historyDetailEmoji}>
-                            {moodValueToEmoji(selectedHistoryItem.moodValue)}
-                          </Text>
-                        </View>
-                        <View style={styles.historyDetailTexts}>
-                          <Text style={styles.historyDetailMoodTitle}>
-                            Mood {selectedHistoryItem.moodValue}/5
-                          </Text>
-                          <Text style={styles.historyDetailSubtitle}>
-                            {formatFullDateTime(selectedHistoryItem.loggedAt)}
-                          </Text>
-                        </View>
-                      </View>
+                  {selectedHistoryItem.reasonSummary ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>Résumé</Text>
+                      <Text style={styles.historySectionText}>
+                        {selectedHistoryItem.reasonSummary}
+                      </Text>
+                    </View>
+                  ) : null}
 
-                      {selectedHistoryItem.reasonSummary ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Résumé</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.reasonSummary}
-                          </Text>
-                        </View>
-                      ) : null}
+                  {selectedHistoryItem.note ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>Note</Text>
+                      <Text style={styles.historySectionText}>
+                        {selectedHistoryItem.note}
+                      </Text>
+                    </View>
+                  ) : null}
 
-                      {selectedHistoryItem.note ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Note</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.note}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>Contexte</Text>
-                        <Text style={styles.historySectionText}>
-                          {contextLabelFromMood(selectedHistoryItem.context)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>
-                          Visibilité
-                        </Text>
-                        <Text style={styles.historySectionText}>
-                          {describeVisibility(selectedHistoryItem)}
-                        </Text>
-                      </View>
-
-                      {selectedHistoryItem.categories?.length ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>
-                            Catégories
-                          </Text>
-                          <View style={styles.historyTagRow}>
-                            {selectedHistoryItem.categories.map((category) => (
-                              <View key={category.id} style={styles.historyTag}>
-                                <Text style={styles.historyTagText}>
-                                  {category.name}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                      ) : null}
-                    </ScrollView>
-                  </>
-                ) : null}
-              </Animated.View>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
-      {/* Sélecteur de portée */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isScopePickerVisible}
-        onRequestClose={closeScopePicker}
-      >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeScopePicker}
-            accessibilityRole="button"
-          />
-
-          <Animated.View
-            style={[
-              styles.historySheet,
-              { transform: [{ translateY: scopeSheetTranslateY }] },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
-                {pickerStep === 1
-                  ? "De qui voulez-vous voir les données ?"
-                  : "De quel employé voulez-vous voir les données ?"}
-              </Text>
-              <Pressable onPress={closeScopePicker}>
-                <Text style={styles.modalCloseButton}>Fermer</Text>
-              </Pressable>
-            </View>
-            <View style={{ gap: 8, paddingBottom: 44 }}>
-              {pickerStep === 1 ? (
-                <>
-                  <Pressable
-                    style={styles.timelineItem}
-                    onPress={() => {
-                      setScope("me");
-                      setSelectedTeamId(null);
-                      setTargetUserId(null);
-                      setPickerStep(1);
-                      closeScopePicker();
-                    }}
-                  >
-                    <Text style={styles.timelineMood}>
-                      Moi ({summary?.username ?? user?.username ?? "—"})
+                  <View style={styles.historySection}>
+                    <Text style={styles.historySectionTitle}>Contexte</Text>
+                    <Text style={styles.historySectionText}>
+                      {contextLabelFromMood(selectedHistoryItem.context)}
                     </Text>
-                  </Pressable>
-                  {managedTeams.map((t) => (
-                    <Pressable
-                      key={t.id}
-                      style={styles.timelineItem}
-                      onPress={async () => {
-                        setPickerTeamId(t.id);
-                        if (!teamIdToMembers[t.id]) {
-                          try {
-                            const list = await fetchTeamMembers(t.id, {
-                              excludeUserId: user?.id ?? undefined,
-                            });
-                            setTeamIdToMembers((prev) => ({
-                              ...prev,
-                              [t.id]: list,
-                            }));
-                          } catch {
-                            setTeamIdToMembers((prev) => ({
-                              ...prev,
-                              [t.id]: [],
-                            }));
-                          }
-                        }
-                        setPickerStep(2);
-                      }}
-                    >
-                      <Text style={styles.timelineMood}>Équipe {t.name}</Text>
-                    </Pressable>
-                  ))}
-                </>
-              ) : (
-                <>
+                  </View>
+
+                  <View style={styles.historySection}>
+                    <Text style={styles.historySectionTitle}>Visibilité</Text>
+                    <Text style={styles.historySectionText}>
+                      {describeVisibility(selectedHistoryItem)}
+                    </Text>
+                  </View>
+
+                  {selectedHistoryItem.categories?.length ? (
+                    <View style={styles.historySection}>
+                      <Text style={styles.historySectionTitle}>
+                        Catégories
+                      </Text>
+                      <View style={styles.historyTagRow}>
+                        {selectedHistoryItem.categories.map((category) => (
+                          <View key={category.id} style={styles.historyTag}>
+                            <Text style={styles.historyTagText}>
+                              {category.name}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                </ScrollView>
+              </>
+            ) : null}
+          </Animated.View>
+        </View>
+      </BottomSheetModal>
+      {/* Sélecteur de portée */}
+      <BottomSheetModal
+        visible={isScopePickerVisible}
+        onClose={closeScopePicker}
+        sheetStyle={styles.historySheet}
+        showHandle={false}
+      >
+        <View style={styles.sheetHandle} />
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
+            {pickerStep === 1
+              ? "De qui voulez-vous voir les données ?"
+              : "De quel employé voulez-vous voir les données ?"}
+          </Text>
+          <Pressable onPress={closeScopePicker}>
+            <Text style={styles.modalCloseButton}>Fermer</Text>
+          </Pressable>
+        </View>
+        <View style={{ gap: 8, paddingBottom: 44 }}>
+          {pickerStep === 1 ? (
+            <>
+              <Pressable
+                style={styles.timelineItem}
+                onPress={() => {
+                  setScope("me");
+                  setSelectedTeamId(null);
+                  setTargetUserId(null);
+                  setPickerStep(1);
+                  closeScopePicker();
+                }}
+              >
+                <Text style={styles.timelineMood}>
+                  Moi ({summary?.username ?? user?.username ?? "—"})
+                </Text>
+              </Pressable>
+              {managedTeams.map((t) => (
+                <Pressable
+                  key={t.id}
+                  style={styles.timelineItem}
+                  onPress={async () => {
+                    setPickerTeamId(t.id);
+                    if (!teamIdToMembers[t.id]) {
+                      try {
+                        const list = await fetchTeamMembers(t.id, {
+                          excludeUserId: user?.id ?? undefined,
+                        });
+                        setTeamIdToMembers((prev) => ({
+                          ...prev,
+                          [t.id]: list,
+                        }));
+                      } catch {
+                        setTeamIdToMembers((prev) => ({
+                          ...prev,
+                          [t.id]: [],
+                        }));
+                      }
+                    }
+                    setPickerStep(2);
+                  }}
+                >
+                  <Text style={styles.timelineMood}>Équipe {t.name}</Text>
+                </Pressable>
+              ))}
+            </>
+          ) : (
+            <>
+              <Pressable
+                style={styles.timelineItem}
+                onPress={() => {
+                  setScope("team");
+                  setSelectedTeamId(pickerTeamId);
+                  setTargetUserId(null);
+                  setPickerStep(1);
+                  setPickerTeamId(null);
+                  closeScopePicker();
+                }}
+              >
+                <Text style={styles.timelineMood}>Toute l'équipe</Text>
+              </Pressable>
+              {(pickerTeamId ? teamIdToMembers[pickerTeamId] ?? [] : []).map(
+                (m) => (
                   <Pressable
+                    key={m.id}
                     style={styles.timelineItem}
                     onPress={() => {
-                      setScope("team");
+                      setScope("user");
                       setSelectedTeamId(pickerTeamId);
-                      setTargetUserId(null);
+                      setTargetUserId(m.id);
                       setPickerStep(1);
                       setPickerTeamId(null);
                       closeScopePicker();
                     }}
                   >
-                    <Text style={styles.timelineMood}>Toute l'équipe</Text>
+                    <Text style={styles.timelineMood}>{m.label}</Text>
                   </Pressable>
-                  {(pickerTeamId
-                    ? teamIdToMembers[pickerTeamId] ?? []
-                    : []
-                  ).map((m) => (
-                    <Pressable
-                      key={m.id}
-                      style={styles.timelineItem}
-                      onPress={() => {
-                        setScope("user");
-                        setSelectedTeamId(pickerTeamId);
-                        setTargetUserId(m.id);
-                        setPickerStep(1);
-                        setPickerTeamId(null);
-                        closeScopePicker();
-                      }}
-                    >
-                      <Text style={styles.timelineMood}>{m.label}</Text>
-                    </Pressable>
-                  ))}
-                  <Pressable
-                    style={[styles.timelineItem, { justifyContent: "center" }]}
-                    onPress={() => {
-                      setPickerStep(1);
-                      setPickerTeamId(null);
-                    }}
-                  >
-                    <Text style={styles.timelineMood}>← Retour</Text>
-                  </Pressable>
-                </>
+                )
               )}
-            </View>
-          </Animated.View>
+              <Pressable
+                style={[styles.timelineItem, { justifyContent: "center" }]}
+                onPress={() => {
+                  setPickerStep(1);
+                  setPickerTeamId(null);
+                }}
+              >
+                <Text style={styles.timelineMood}>← Retour</Text>
+              </Pressable>
+            </>
+          )}
         </View>
-      </Modal>
+      </BottomSheetModal>
     </Container>
   );
 }

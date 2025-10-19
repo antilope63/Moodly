@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { VisibilityLevel, VisibilitySettings } from '@/types/mood';
@@ -32,6 +32,13 @@ export const VisibilityForm = ({
   isAnonymous = false,
   onAnonymousChange,
 }: VisibilityFormProps) => {
+  useEffect(() => {
+    if (value.allowCustomRecipients) {
+      onChange({ ...value, allowCustomRecipients: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.allowCustomRecipients]);
+
   const peerCaption = useMemo(() => {
     switch (value.showReasonToPeers) {
       case 'hidden':
@@ -148,16 +155,6 @@ export const VisibilityForm = ({
         </View>
       ) : null}
 
-      <View style={styles.row}>
-        <Text style={styles.title}>Inviter d’autres lecteurs</Text>
-        <Switch
-          value={value.allowCustomRecipients}
-          onValueChange={(allowCustomRecipients) => onChange({ ...value, allowCustomRecipients })}
-        />
-      </View>
-      <Text style={styles.caption}>
-        Utilise cette option si tu veux cibler un manager transverse ou un buddy spécifique.
-      </Text>
     </View>
   );
 };
