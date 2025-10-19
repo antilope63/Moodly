@@ -5,19 +5,7 @@ import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { getMoodOptionByValue } from "@/constants/mood";
 import { getReflectionOption } from "@/constants/reflection-options";
 import { Palette } from "@/constants/theme";
-import type { MoodEntry, VisibilitySettings } from "@/types/mood";
-
-const formatVisibility = (
-  visibility: VisibilitySettings,
-  isAnonymous: boolean
-) => {
-  if (isAnonymous) return "Anonyme";
-  if (visibility.showReasonToPeers === "hidden")
-    return "Raisons cachées aux collègues";
-  if (visibility.showReasonToPeers === "anonymized")
-    return "Raisons anonymisées pour les collègues";
-  return "Raisons visibles par les collègues";
-};
+import type { MoodEntry } from "@/types/mood";
 
 const formatDate = (date: string) => {
   try {
@@ -34,13 +22,14 @@ const formatDate = (date: string) => {
 
 export const MoodCard = ({
   mood,
-  highlightReason = false,
+  viewerRole = "employee",
 }: {
   mood: MoodEntry;
-  highlightReason?: boolean;
+  viewerRole?: "employee" | "manager";
 }) => {
   const [showFullMessage, setShowFullMessage] = useState(false);
   const [isDetailsVisible, setDetailsVisible] = useState(false);
+  const isManagerViewer = viewerRole === "manager";
 
   useEffect(() => {
     setShowFullMessage(false);
@@ -62,20 +51,32 @@ export const MoodCard = ({
       : mood.context === "personal"
       ? "Personnel"
       : "Mixte";
-  const authorName =
-    mood.isAnonymous || !mood.loggedBy ? "Un collègue" : mood.loggedBy.username;
+  const authorName = useMemo(() => {
+    if (!isManagerViewer) {
+      return "Un collègue";
+    }
+    const visibilityForManagers = mood.visibility?.showReasonToManagers;
+    if (mood.isAnonymous || visibilityForManagers !== "visible") {
+      return "Un collègue";
+    }
+    return mood.loggedBy?.username ?? "Un collègue";
+  }, [isManagerViewer, mood.isAnonymous, mood.loggedBy?.username, mood.visibility?.showReasonToManagers]);
   const teamLabel = mood.team?.name ? `Équipe ${mood.team.name}` : null;
   const noteText = mood.note?.trim() ?? null;
   const reasonText = mood.reasonSummary?.trim() ?? null;
-  const primaryMessage = useMemo(() => {
-    if (highlightReason && reasonText) {
-      return reasonText;
+  const canViewDetails = useMemo(() => {
+    if (isManagerViewer) {
+      return (mood.visibility?.showReasonToManagers ?? "anonymized") !== "hidden";
     }
-    if (noteText) {
-      return noteText;
-    }
-    return reasonText;
-  }, [highlightReason, noteText, reasonText]);
+    return (mood.visibility?.showReasonToPeers ?? "anonymized") !== "hidden";
+  }, [isManagerViewer, mood.visibility?.showReasonToManagers, mood.visibility?.showReasonToPeers]);
+
+ const primaryMessage = useMemo(() => {
+   if (!canViewDetails) {
+     return null;
+   }
+    return noteText ?? reasonText;
+  }, [canViewDetails, noteText, reasonText]);
   const normalizedMessage = primaryMessage ?? null;
   const hasLongMessage = (normalizedMessage?.length ?? 0) > 180;
 
@@ -103,10 +104,12 @@ export const MoodCard = ({
         }
       : null;
 
-  const moodDetails = prideDetail
-    ? [...detailOptions, prideDetail]
-    : detailOptions;
-  const hasDetails = Boolean(moodDetails.length) || Boolean(noteText);
+  const moodDetails = canViewDetails
+    ? prideDetail
+      ? [...detailOptions, prideDetail]
+      : detailOptions
+    : [];
+  const hasDetails = canViewDetails && (moodDetails.length > 0 || Boolean(noteText));
 
   const openDetails = useCallback(() => {
     if (hasDetails) {
@@ -117,6 +120,15 @@ export const MoodCard = ({
   const closeDetails = useCallback(() => {
     setDetailsVisible(false);
   }, []);
+
+  const privacyHint = useMemo(() => {
+    if (canViewDetails) {
+      return null;
+    }
+    return isManagerViewer
+      ? "Contenu partagé en privé par ce collaborateur."
+      : "Mood partagé en privé aujourd’hui.";
+  }, [canViewDetails, isManagerViewer]);
 
   return (
     <View style={styles.card}>
@@ -162,6 +174,9 @@ export const MoodCard = ({
                 ) : null}
               </>
             ) : null}
+            {!normalizedMessage && privacyHint ? (
+              <Text style={styles.note}>{privacyHint}</Text>
+            ) : null}
             {hasDetails ? (
               <Pressable
                 onPress={openDetails}
@@ -178,11 +193,6 @@ export const MoodCard = ({
           </View>
         </View>
 
-        <View style={styles.footerRow}>
-          <Text style={styles.visibility}>
-            {formatVisibility(mood.visibility, mood.isAnonymous)}
-          </Text>
-        </View>
       </View>
       <BottomSheetModal
         visible={isDetailsVisible}
@@ -345,15 +355,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8A8CA5",
     marginTop: 6,
-  },
-  footerRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E2E4F3",
-    paddingTop: 12,
-  },
-  visibility: {
-    color: "#8A8CA5",
-    fontSize: 12,
   },
   modalSheet: {
     backgroundColor: "#FFFFFF",

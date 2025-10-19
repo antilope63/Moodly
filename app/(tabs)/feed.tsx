@@ -52,6 +52,7 @@ type FeedListProps = {
   greeting: string;
   onOpenForm: (initialMoodValue?: number) => void;
   canPublish: boolean;
+  isManagerView: boolean;
 };
 
 const FeedList = ({
@@ -63,8 +64,9 @@ const FeedList = ({
   greeting,
   onOpenForm,
   canPublish = true,
+  isManagerView,
 }: FeedListProps) => {
-  const highlightId = useMemo(() => moods.at(0)?.id, [moods]);
+  const [refreshing, setRefreshing] = useState(false);
 
   return (
     <FlatList
@@ -75,9 +77,7 @@ const FeedList = ({
         <View style={styles.cardWrapper}>
           <MoodCard
             mood={item}
-            highlightReason={
-              item.id === highlightId && Boolean(item.reasonSummary)
-            }
+            viewerRole={isManagerView ? "manager" : "employee"}
           />
         </View>
       )}
@@ -100,7 +100,17 @@ const FeedList = ({
       contentContainerStyle={styles.listContent}
       keyboardShouldPersistTaps="handled"
       refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={refresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            try {
+              setRefreshing(true);
+              await refresh();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
       }
       ItemSeparatorComponent={() => <View style={styles.separator} />}
     />
@@ -227,6 +237,18 @@ export default function FeedScreen() {
             greeting={`Bonjour ${user?.username ?? "Moodlover"} 👋`}
             onOpenForm={handleOpenForm}
             canPublish={user?.role !== "admin" && user?.rawRole !== "admin"}
+            isManagerView={(() => {
+              const raw = user?.rawRole?.toLowerCase();
+              const role = user?.role?.toLowerCase();
+              return (
+                raw === "manager" ||
+                raw === "admin" ||
+                raw === "hr" ||
+                role === "manager" ||
+                role === "admin" ||
+                role === "hr"
+              );
+            })()}
           />
         </View>
         <View style={[styles.page, { width }]}>

@@ -1,9 +1,12 @@
 import { Switch as TamSwitch } from "@tamagui/switch";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Animated,
+  Dimensions,
+  Easing,
   Platform,
   Pressable,
   SafeAreaView,
@@ -75,6 +78,9 @@ export default function LogMoodScreen() {
   const [energyChoice, setEnergyChoice] = useState<string | null>(null);
   const [prideValue, setPrideValue] = useState<number>(70);
   const [isConfigOpen, setConfigOpen] = useState(false);
+  const [isConfigOverlayVisible, setConfigOverlayVisible] = useState(false);
+  const configSlide = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get("window").width;
 
   const moodOption = getMoodOptionByValue(moodValue);
   const selectedFreedom = FREEDOM_OPTIONS.find(
@@ -92,6 +98,47 @@ export default function LogMoodScreen() {
       setMoodValue(initialMoodFromParams);
     }
   }, [initialMoodFromParams]);
+
+  useEffect(() => {
+    if (isConfigOpen) {
+      setConfigOverlayVisible(true);
+      Animated.timing(configSlide, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(configSlide, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setConfigOverlayVisible(false);
+        }
+      });
+    }
+  }, [configSlide, isConfigOpen]);
+
+  const configTranslateX = useMemo(
+    () =>
+      configSlide.interpolate({
+        inputRange: [0, 1],
+        outputRange: [screenWidth, 0],
+      }),
+    [configSlide, screenWidth]
+  );
+
+  const configOpacity = useMemo(
+    () =>
+      configSlide.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+      }),
+    [configSlide]
+  );
 
   const renderReflectionCard = (
     title: string,
@@ -367,96 +414,6 @@ export default function LogMoodScreen() {
     }
   }, [isSubmitting]);
 
-  if (isConfigOpen) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.flex}
-        >
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.navRow}>
-              <Pressable
-                onPress={closeConfig}
-                style={styles.backButton}
-                accessibilityRole="button"
-              >
-                <Text style={styles.backLabel}>←</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.headerBlock}>
-              <Text style={styles.title}>Configurer la publication</Text>
-              <Text style={styles.subtitle}>
-                Ajuste qui peut voir ton humeur aujourd’hui.
-              </Text>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Ton récapitulatif</Text>
-              <Text style={styles.summaryMoodLine}>
-                {moodOption?.emoji ?? "🙂"}{" "}
-                {moodOption?.title ?? "Mood non renseigné"}
-              </Text>
-              <Text style={styles.summaryMoodSubtitle}>
-                Contexte : {CONTEXT_LABEL[context]}
-              </Text>
-              {reflectionSummary.length ? (
-                <View style={styles.summaryPills}>
-                  {reflectionSummary.map((line, index) => (
-                    <View key={index} style={styles.summaryPill}>
-                      <Text style={styles.summaryPillText}>{line}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.cardHint}>
-                  Ajoute des ressentis sur l’écran précédent pour enrichir ton
-                  mood.
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.card}>
-              <VisibilityForm
-                value={visibility}
-                onChange={handleVisibilityChange}
-                showHrSection={false}
-                variant="plain"
-                showAnonymityToggle
-                isAnonymous={isAnonymous}
-                onAnonymousChange={handleAnonymousChange}
-              />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-
-        <View style={styles.bottomBar}>
-          <Button
-            theme="accent"
-            size="$5"
-            disabled={isSubmitting}
-            onPress={() => {
-              if (!isSubmitting) {
-                void handleSubmit();
-              }
-            }}
-          >
-            {isSubmitting
-              ? "Enregistrement..."
-              : editingId
-              ? "Mettre à jour et publier"
-              : "Publier mon mood"}
-          </Button>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -562,25 +519,128 @@ export default function LogMoodScreen() {
             />
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={styles.actionsBlock}>
+            <Button
+              size="$5"
+              theme="accent"
+              onPress={handleOpenConfig}
+              disabled={isSubmitting || !canOpenConfig}
+            >
+              Configurer mon mood
+            </Button>
+            {!canOpenConfig ? (
+              <Text style={styles.bottomHint}>
+                Sélectionne une option dans chaque carte avant de continuer.
+              </Text>
+            ) : null}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.bottomBar}>
-        <Button
-          size="$5"
-          theme="accent"
-          onPress={handleOpenConfig}
-          disabled={isSubmitting || !canOpenConfig}
+      {isConfigOverlayVisible ? (
+        <Animated.View
+          pointerEvents={isConfigOpen ? "auto" : "none"}
+          style={[
+            styles.configOverlay,
+            {
+              opacity: configOpacity,
+            },
+          ]}
         >
-          Configurer mon mood
-        </Button>
-        {!canOpenConfig ? (
-          <Text style={styles.bottomHint}>
-            Sélectionne une option dans chaque carte avant de continuer.
-          </Text>
-        ) : null}
-      </View>
+          <Animated.View
+            style={[
+              styles.configPanel,
+              { transform: [{ translateX: configTranslateX }] },
+            ]}
+          >
+            <SafeAreaView style={styles.configContainer}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={styles.flex}
+              >
+                <ScrollView
+                  contentContainerStyle={styles.content}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.navRow}>
+                    <Pressable
+                      onPress={closeConfig}
+                      style={styles.backButton}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.backLabel}>←</Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.headerBlock}>
+                    <Text style={styles.title}>Configurer la publication</Text>
+                    <Text style={styles.subtitle}>
+                      Ajuste qui peut voir ton humeur aujourd’hui.
+                    </Text>
+                  </View>
+
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Ton récapitulatif</Text>
+                    <Text style={styles.summaryMoodLine}>
+                      {moodOption?.emoji ?? "🙂"}{" "}
+                      {moodOption?.title ?? "Mood non renseigné"}
+                    </Text>
+                    <Text style={styles.summaryMoodSubtitle}>
+                      Contexte : {CONTEXT_LABEL[context]}
+                    </Text>
+                    {reflectionSummary.length ? (
+                      <View style={styles.summaryPills}>
+                        {reflectionSummary.map((line, index) => (
+                          <View key={index} style={styles.summaryPill}>
+                            <Text style={styles.summaryPillText}>{line}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={styles.cardHint}>
+                        Ajoute des ressentis sur l’écran précédent pour enrichir
+                        ton mood.
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.card}>
+                    <VisibilityForm
+                      value={visibility}
+                      onChange={handleVisibilityChange}
+                      showHrSection={false}
+                      variant="plain"
+                      showAnonymityToggle
+                      isAnonymous={isAnonymous}
+                      onAnonymousChange={handleAnonymousChange}
+                    />
+                  </View>
+
+                  <View style={styles.actionsBlock}>
+                    <Button
+                      theme="accent"
+                      size="$5"
+                      disabled={isSubmitting}
+                      onPress={() => {
+                        if (!isSubmitting) {
+                          void handleSubmit();
+                        }
+                      }}
+                    >
+                      {isSubmitting
+                        ? "Enregistrement..."
+                        : editingId
+                        ? "Mettre à jour et publier"
+                        : "Publier mon mood"}
+                    </Button>
+                  </View>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </Animated.View>
+        </Animated.View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -595,7 +655,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingBottom: 200,
+    paddingBottom: 60,
     gap: 20,
   },
   navRow: {
@@ -683,6 +743,7 @@ const styles = StyleSheet.create({
     margin: -10,
     padding: 0,
     shadowOpacity: 0,
+    opacity: 0,
   },
   reflectionRow: {
     flexDirection: "row",
@@ -715,17 +776,9 @@ const styles = StyleSheet.create({
     color: Palette.textSecondary,
     lineHeight: 20,
   },
-  bottomBar: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0, 0, 0, 0.08)",
+  actionsBlock: {
     gap: 8,
-  },
-  bottomSpacer: {
-    height: 40,
+    paddingBottom: 8,
   },
   bottomHint: {
     fontSize: 12,
@@ -736,62 +789,16 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   configOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(17, 24, 39, 0.35)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
-  configBackdrop: StyleSheet.absoluteFillObject,
-  configSheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 24,
-    maxHeight: "90%",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0, 0, 0, 0.05)",
-    shadowColor: "#000000",
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
+  configPanel: {
+    flex: 1,
   },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 48,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
-    marginBottom: 12,
-  },
-  configHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  configTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Palette.textPrimary,
-  },
-  configClose: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Palette.bleuMarin,
-  },
-  configContent: {
-    paddingBottom: 24,
-    gap: 20,
-  },
-  configRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  configActions: {
-    paddingTop: 12,
+  configContainer: {
+    flex: 1,
+    backgroundColor: Palette.whiteBackground,
   },
   summaryMoodLine: {
     fontSize: 16,
