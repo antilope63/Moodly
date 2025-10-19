@@ -91,6 +91,8 @@ const SVG_DEFAULT_WIDTH =
   (DEFAULT_OUTER_PADDING * 2 + DEFAULT_CARD_PADDING * 2); // Largeur utile intérieure à la carte
 const LEFT_AXIS_PADDING = 44; // Laisse de l'espace pour les libellés verticaux sans marcher sur le tracé
 const RIGHT_CHART_PADDING = 16; // Marge droite pour que les points ne soient pas coupés
+const HISTORY_SHEET_BASE_OFFSET =
+  Dimensions.get("window").height + 80; // Suffisamment grand pour masquer la feuille avant mesure
 const MOOD_LEVELS = [5, 4, 3, 2, 1];
 
 type ManagerPillOption =
@@ -378,33 +380,70 @@ export function ProfileDashboard({
   const periods = ["Semaine", "Mois"];
 
   // Animations bottom sheet (histoire + scope picker)
-  const historySheetTranslateY = useRef(new Animated.Value(300)).current;
+  const historySheetProgress = useRef(new Animated.Value(0)).current;
   const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
   const historyDetailProgress = useRef(new Animated.Value(0)).current;
+  const [historySheetHeight, setHistorySheetHeight] = useState(0);
+  const historySheetHiddenOffset = useMemo(() => {
+    if (historySheetHeight > 0) {
+      // On ajoute une marge pour s'assurer que la feuille sort complètement de l'écran
+      return historySheetHeight + 32;
+    }
+    return HISTORY_SHEET_BASE_OFFSET;
+  }, [historySheetHeight]);
+
+  const historySheetTranslateY = useMemo(
+    () =>
+      historySheetProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [historySheetHiddenOffset, 0],
+      }),
+    [historySheetProgress, historySheetHiddenOffset]
+  );
 
   const openHistoryModal = useCallback(() => {
+    historySheetProgress.stopAnimation();
+    historySheetProgress.setValue(0);
+    historyDetailProgress.stopAnimation();
+    historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
     setHistoryModalVisible(true);
-    historyDetailProgress.setValue(0);
-    Animated.timing(historySheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [historyDetailProgress, historySheetTranslateY]);
+  }, [historyDetailProgress, historySheetProgress]);
 
   const closeHistoryModal = useCallback(() => {
     historyDetailProgress.stopAnimation();
     historyDetailProgress.setValue(0);
     setSelectedHistoryItem(null);
-    Animated.timing(historySheetTranslateY, {
-      toValue: 300,
-      duration: 200,
+    historySheetProgress.stopAnimation();
+    Animated.timing(historySheetProgress, {
+      toValue: 0,
+      duration: 220,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(() => setHistoryModalVisible(false));
-  }, [historyDetailProgress, historySheetTranslateY]);
+  }, [historyDetailProgress, historySheetProgress]);
+
+  const animateHistorySheetOpen = useCallback(() => {
+    historySheetProgress.stopAnimation();
+    Animated.timing(historySheetProgress, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [historySheetProgress]);
+
+  useEffect(() => {
+    if (!isHistoryModalVisible) {
+      historySheetProgress.stopAnimation();
+      historySheetProgress.setValue(0);
+    }
+  }, [historySheetProgress, isHistoryModalVisible]);
+
+  useEffect(() => {
+    if (!isHistoryModalVisible) return;
+    animateHistorySheetOpen();
+  }, [isHistoryModalVisible, animateHistorySheetOpen]);
 
   useEffect(() => {
     if (!isScopePickerVisible) return;
@@ -809,7 +848,7 @@ export function ProfileDashboard({
             </View>
 
             <View style={styles.card}>
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
                 <Text style={styles.cardTitlePrimary}>
                   Historique des moods
                 </Text>
@@ -832,6 +871,7 @@ export function ProfileDashboard({
         transparent
         visible={isHistoryModalVisible}
         onRequestClose={closeHistoryModal}
+        onShow={animateHistorySheetOpen}
       >
         <View style={styles.historyOverlay}>
           <Pressable
@@ -845,6 +885,12 @@ export function ProfileDashboard({
               styles.historySheet,
               { transform: [{ translateY: historySheetTranslateY }] },
             ]}
+            onLayout={(event) => {
+              const { height } = event.nativeEvent.layout;
+              setHistorySheetHeight((prev) =>
+                Math.abs(prev - height) < 1 ? prev : height
+              );
+            }}
           >
             <View style={styles.sheetHandle} />
 
