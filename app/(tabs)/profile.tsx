@@ -1,6 +1,7 @@
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Palette } from "@/constants/theme";
 import { useManagedMoodHistory } from "@/hooks/use-managed-mood-history";
 import { useProfileSummary } from "@/hooks/use-profile-summary";
 import { useAuth } from "@/providers/auth-provider";
@@ -31,7 +32,7 @@ import Svg, { Circle, Line, Path, Text as SvgText } from "react-native-svg";
 
 const theme = {
   colors: {
-    primary: "#4B93F2",
+    primary: Palette.bleuMarin,
     backgroundLight: "#f6f8f8",
     foregroundLight: "#111827",
     subtleLight: "#6b7280",
