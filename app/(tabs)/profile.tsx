@@ -59,29 +59,6 @@ const moodValueToEmoji = (value: number) => {
   }
 };
 
-const contextLabelFromMood = (context: MoodEntry["context"]) => {
-  if (context === "professional") return "Travail";
-  if (context === "personal") return "Personnel";
-  if (context === "mixed") return "Mixte";
-  return "Mood";
-};
-
-const formatFullDateTime = (value: string) => {
-  try {
-    return format(new Date(value), "d MMM yyyy 'à' HH:mm", { locale: fr });
-  } catch {
-    return value;
-  }
-};
-
-const describeVisibility = (entry: MoodEntry) => {
-  if (entry.isAnonymous) return "Partagé en anonyme";
-  const peers = entry.visibility.showReasonToPeers;
-  if (peers === "hidden") return "Raisons cachées aux collègues";
-  if (peers === "anonymized") return "Raisons anonymisées pour les collègues";
-  return "Raisons visibles par les collègues";
-};
-
 // --- Logique du Graphique Corrigée ---
 const CHART_HEIGHT = 100;
 const DEFAULT_OUTER_PADDING = 16;
@@ -91,8 +68,6 @@ const SVG_DEFAULT_WIDTH =
   (DEFAULT_OUTER_PADDING * 2 + DEFAULT_CARD_PADDING * 2); // Largeur utile intérieure à la carte
 const LEFT_AXIS_PADDING = 44; // Laisse de l'espace pour les libellés verticaux sans marcher sur le tracé
 const RIGHT_CHART_PADDING = 16; // Marge droite pour que les points ne soient pas coupés
-const HISTORY_SHEET_BASE_OFFSET =
-  Dimensions.get("window").height + 80; // Suffisamment grand pour masquer la feuille avant mesure
 const MOOD_LEVELS = [5, 4, 3, 2, 1];
 
 type ManagerPillOption =
@@ -375,75 +350,41 @@ export function ProfileDashboard({
   const router = useRouter();
   const [activePeriod, setActivePeriod] = useState("Semaine");
   const [isHistoryModalVisible, setHistoryModalVisible] = useState(false);
-  const [selectedHistoryItem, setSelectedHistoryItem] =
-    useState<MoodEntry | null>(null);
   const periods = ["Semaine", "Mois"];
 
   // Animations bottom sheet (histoire + scope picker)
-  const historySheetProgress = useRef(new Animated.Value(0)).current;
+  const historySheetTranslateY = useRef(new Animated.Value(300)).current;
   const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
-  const historyDetailProgress = useRef(new Animated.Value(0)).current;
-  const [historySheetHeight, setHistorySheetHeight] = useState(0);
-  const historySheetHiddenOffset = useMemo(() => {
-    if (historySheetHeight > 0) {
-      // On ajoute une marge pour s'assurer que la feuille sort complètement de l'écran
-      return historySheetHeight + 32;
+
+  useEffect(() => {
+    historySheetTranslateY.stopAnimation();
+    if (!isHistoryModalVisible) {
+      historySheetTranslateY.setValue(300);
+      return;
     }
-    return HISTORY_SHEET_BASE_OFFSET;
-  }, [historySheetHeight]);
-
-  const historySheetTranslateY = useMemo(
-    () =>
-      historySheetProgress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [historySheetHiddenOffset, 0],
-      }),
-    [historySheetProgress, historySheetHiddenOffset]
-  );
-
-  const openHistoryModal = useCallback(() => {
-    historySheetProgress.stopAnimation();
-    historySheetProgress.setValue(0);
-    historyDetailProgress.stopAnimation();
-    historyDetailProgress.setValue(0);
-    setSelectedHistoryItem(null);
-    setHistoryModalVisible(true);
-  }, [historyDetailProgress, historySheetProgress]);
-
-  const closeHistoryModal = useCallback(() => {
-    historyDetailProgress.stopAnimation();
-    historyDetailProgress.setValue(0);
-    setSelectedHistoryItem(null);
-    historySheetProgress.stopAnimation();
-    Animated.timing(historySheetProgress, {
+    historySheetTranslateY.setValue(300);
+    Animated.timing(historySheetTranslateY, {
       toValue: 0,
-      duration: 220,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setHistoryModalVisible(false));
-  }, [historyDetailProgress, historySheetProgress]);
-
-  const animateHistorySheetOpen = useCallback(() => {
-    historySheetProgress.stopAnimation();
-    Animated.timing(historySheetProgress, {
-      toValue: 1,
       duration: 240,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [historySheetProgress]);
+  }, [historySheetTranslateY, isHistoryModalVisible]);
 
-  useEffect(() => {
-    if (!isHistoryModalVisible) {
-      historySheetProgress.stopAnimation();
-      historySheetProgress.setValue(0);
-    }
-  }, [historySheetProgress, isHistoryModalVisible]);
+  const openHistoryModal = useCallback(() => {
+    historySheetTranslateY.stopAnimation();
+    setHistoryModalVisible(true);
+  }, [historySheetTranslateY]);
 
-  useEffect(() => {
-    if (!isHistoryModalVisible) return;
-    animateHistorySheetOpen();
-  }, [isHistoryModalVisible, animateHistorySheetOpen]);
+  const closeHistoryModal = useCallback(() => {
+    historySheetTranslateY.stopAnimation();
+    Animated.timing(historySheetTranslateY, {
+      toValue: 300,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setHistoryModalVisible(false));
+  }, [historySheetTranslateY]);
 
   useEffect(() => {
     if (!isScopePickerVisible) return;
@@ -650,47 +591,6 @@ export function ProfileDashboard({
 
   const showManagerPills = isManager && managerUserPills.length > 0;
 
-  const showHistoryDetail = useCallback(
-    (entry: MoodEntry) => {
-      historyDetailProgress.stopAnimation();
-      historyDetailProgress.setValue(0);
-      setSelectedHistoryItem(entry);
-      Animated.timing(historyDetailProgress, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    },
-    [historyDetailProgress]
-  );
-
-  const hideHistoryDetail = useCallback(() => {
-    historyDetailProgress.stopAnimation();
-    Animated.timing(historyDetailProgress, {
-      toValue: 0,
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      setSelectedHistoryItem(null);
-    });
-  }, [historyDetailProgress]);
-
-  const historyListOpacity = historyDetailProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0],
-  });
-  const historyListTranslateX = historyDetailProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -32],
-  });
-  const historyDetailOpacity = historyDetailProgress;
-  const historyDetailTranslateX = historyDetailProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [32, 0],
-  });
-
   return (
     <Container style={embedded ? styles.embeddedSafeArea : styles.safeArea}>
       <ScrollView
@@ -867,11 +767,10 @@ export function ProfileDashboard({
       </ScrollView>
 
       <Modal
-        animationType="none"
-        transparent
+        animationType="fade"
+        transparent={true}
         visible={isHistoryModalVisible}
         onRequestClose={closeHistoryModal}
-        onShow={animateHistorySheetOpen}
       >
         <View style={styles.historyOverlay}>
           <Pressable
@@ -885,152 +784,32 @@ export function ProfileDashboard({
               styles.historySheet,
               { transform: [{ translateY: historySheetTranslateY }] },
             ]}
-            onLayout={(event) => {
-              const { height } = event.nativeEvent.layout;
-              setHistorySheetHeight((prev) =>
-                Math.abs(prev - height) < 1 ? prev : height
-              );
-            }}
           >
             <View style={styles.sheetHandle} />
-
-            <View style={styles.historyContentWrapper}>
-              <Animated.View
-                style={[
-                  styles.historyListContainer,
-                  {
-                    opacity: historyListOpacity,
-                    transform: [{ translateX: historyListTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "none" : "auto"}
-              >
-                <View style={styles.historyHeader}>
-                  <Text style={styles.historyTitle}>Historique des moods</Text>
-                  <Pressable
-                    onPress={closeHistoryModal}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.historyCloseLabel}>Fermer</Text>
-                  </Pressable>
-                </View>
-                <FlatList
-                  data={historyItems}
-                  renderItem={({ item }) => (
-                    <TimelineItem item={item} onPress={showHistoryDetail} />
-                  )}
-                  keyExtractor={(item) => item.id.toString()}
-                  ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                  contentContainerStyle={styles.historyList}
-                  showsVerticalScrollIndicator={false}
-                />
-              </Animated.View>
-
-              <Animated.View
-                style={[
-                  styles.historyDetailContainer,
-                  {
-                    opacity: historyDetailOpacity,
-                    transform: [{ translateX: historyDetailTranslateX }],
-                  },
-                ]}
-                pointerEvents={selectedHistoryItem ? "auto" : "none"}
-              >
-                {selectedHistoryItem ? (
-                  <>
-                    <View style={styles.historyDetailHeader}>
-                      <Pressable
-                        onPress={hideHistoryDetail}
-                        style={styles.historyBackButton}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyBackIcon}>←</Text>
-                        <Text style={styles.historyBackLabel}>Voir tout</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={closeHistoryModal}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.historyCloseLabel}>Fermer</Text>
-                      </Pressable>
-                    </View>
-
-                    <ScrollView
-                      style={styles.historyDetailScroll}
-                      contentContainerStyle={styles.historyDetailContent}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      <View style={styles.historyDetailMoodRow}>
-                        <View style={styles.historyDetailEmojiSurface}>
-                          <Text style={styles.historyDetailEmoji}>
-                            {moodValueToEmoji(selectedHistoryItem.moodValue)}
-                          </Text>
-                        </View>
-                        <View style={styles.historyDetailTexts}>
-                          <Text style={styles.historyDetailMoodTitle}>
-                            Mood {selectedHistoryItem.moodValue}/5
-                          </Text>
-                          <Text style={styles.historyDetailSubtitle}>
-                            {formatFullDateTime(selectedHistoryItem.loggedAt)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {selectedHistoryItem.reasonSummary ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Résumé</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.reasonSummary}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {selectedHistoryItem.note ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>Note</Text>
-                          <Text style={styles.historySectionText}>
-                            {selectedHistoryItem.note}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>Contexte</Text>
-                        <Text style={styles.historySectionText}>
-                          {contextLabelFromMood(selectedHistoryItem.context)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.historySection}>
-                        <Text style={styles.historySectionTitle}>
-                          Visibilité
-                        </Text>
-                        <Text style={styles.historySectionText}>
-                          {describeVisibility(selectedHistoryItem)}
-                        </Text>
-                      </View>
-
-                      {selectedHistoryItem.categories?.length ? (
-                        <View style={styles.historySection}>
-                          <Text style={styles.historySectionTitle}>
-                            Catégories
-                          </Text>
-                          <View style={styles.historyTagRow}>
-                            {selectedHistoryItem.categories.map((category) => (
-                              <View key={category.id} style={styles.historyTag}>
-                                <Text style={styles.historyTagText}>
-                                  {category.name}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                      ) : null}
-                    </ScrollView>
-                  </>
-                ) : null}
-              </Animated.View>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
+                Historique des moods
+              </Text>
+              <Pressable onPress={closeHistoryModal}>
+                <Text style={styles.modalCloseButton}>Fermer</Text>
+              </Pressable>
             </View>
+            {historyItems.length === 0 ? (
+              <View style={styles.historyEmptyState}>
+                <Text style={styles.historyEmptyText}>
+                  Aucun mood enregistré pour cette sélection.
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={historyItems}
+                renderItem={({ item }) => <TimelineItem item={item} />}
+                keyExtractor={(item) => item.id.toString()}
+                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                contentContainerStyle={styles.historyList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
           </Animated.View>
         </View>
       </Modal>
@@ -1384,120 +1163,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(0, 0, 0, 0.15)",
   },
-  historyHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  historyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.foregroundLight,
-  },
-  historyCloseLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.primary,
-  },
-  historyContentWrapper: {
-    flex: 1,
-    position: "relative",
-  },
-  historyListContainer: {
-    flex: 1,
-  },
-  historyDetailContainer: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-  },
   historyList: {
     paddingBottom: 32,
     paddingTop: 8,
   },
-  historyDetailHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  historyBackButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  historyBackIcon: {
-    fontSize: 16,
-    color: theme.colors.primary,
-  },
-  historyBackLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.primary,
-  },
-  historyDetailContent: {
-    gap: 20,
-  },
-  historyDetailScroll: {
-    flexGrow: 0,
-  },
-  historyDetailMoodRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  historyDetailEmojiSurface: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: theme.colors.backgroundLight,
+  historyEmptyState: {
+    paddingVertical: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  historyDetailEmoji: {
-    fontSize: 32,
-  },
-  historyDetailTexts: {
-    flex: 1,
-    gap: 4,
-  },
-  historyDetailMoodTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.foregroundLight,
-  },
-  historyDetailSubtitle: {
+  historyEmptyText: {
     fontSize: 14,
-    color: theme.colors.subtleLight,
-  },
-  historySection: {
-    gap: 8,
-  },
-  historySectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.foregroundLight,
-  },
-  historySectionText: {
-    fontSize: 14,
-    color: theme.colors.subtleLight,
-    lineHeight: 20,
-  },
-  historyTagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  historyTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.backgroundLight,
-  },
-  historyTagText: {
-    fontSize: 12,
     color: theme.colors.subtleLight,
   },
 });
