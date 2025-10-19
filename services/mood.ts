@@ -139,7 +139,6 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
     .from('mood_entries')
     .select(moodEntrySelect)
     .eq('team_id', teamId)
-    .eq('is_anonymous', false)
     .neq('user_id', currentUser.id)
     .gte('logged_at', todayStart.toISOString())
     .lt('logged_at', todayEnd.toISOString())
