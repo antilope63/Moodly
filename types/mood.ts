@@ -1,10 +1,8 @@
-export type MoodLabel = 'awful' | 'rough' | 'neutral' | 'positive' | 'great';
-
 export type MoodContext = 'personal' | 'professional' | 'mixed';
 
 export type VisibilityLevel = 'hidden' | 'anonymized' | 'visible';
 
-export type RoleType = 'employee' | 'manager' | 'hr';
+export type RoleType = 'employee' | 'manager' | 'hr' | 'admin';
 
 export interface VisibilitySettings {
   shareMoodWithAll: boolean;
@@ -42,7 +40,6 @@ export interface TeamSummary {
 export interface MoodEntry {
   id: number;
   moodValue: number;
-  moodLabel: MoodLabel;
   context: MoodContext;
   isAnonymous: boolean;
   reasonSummary?: string | null;
@@ -50,6 +47,10 @@ export interface MoodEntry {
   loggedAt: string;
   visibility: VisibilitySettings;
   categories: MoodCategory[];
+  freedomChoice?: string | null;
+  supportChoice?: string | null;
+  energyChoice?: string | null;
+  pridePercent?: number | null;
   loggedBy?: BasicUser | null;
   additionalViewers?: BasicUser[];
   team?: TeamSummary | null;

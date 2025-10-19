@@ -6,7 +6,7 @@ import { createURL } from 'expo-linking';
 
 const resolveRoleTypeFromMetadata = (role?: string | null): RoleType => {
   const normalized = (role ?? '').toLowerCase();
-  if (normalized === 'manager' || normalized === 'hr' || normalized === 'employee') {
+  if (normalized === 'manager' || normalized === 'hr' || normalized === 'employee' || normalized === 'admin') {
     return normalized as RoleType;
   }
   return 'employee';
@@ -27,15 +27,48 @@ export const loginWithCredentials = async (
     throw new Error("Authentification Supabase invalide.");
   }
 
-  const rawRole = ((user as any)?.app_metadata?.role ?? (user as any)?.user_metadata?.role) ?? null;
-  const role = resolveRoleTypeFromMetadata(rawRole);
+  // 1) Essaie de déduire le rôle via l'appartenance d'équipe (manager/admin/hr/employee)
+  let roleFromMembership: RoleType | null = null;
+  try {
+    const { data: membership } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    const raw = (membership?.role as string | null) ?? null;
+    roleFromMembership = raw ? resolveRoleTypeFromMetadata(raw) : null;
+  } catch {
+    roleFromMembership = null;
+  }
+
+  // 2) Fallback sur les metadata (app/user)
+  const rawRoleMeta = ((user as any)?.app_metadata?.role ?? (user as any)?.user_metadata?.role) ?? null;
+  const role = roleFromMembership ?? resolveRoleTypeFromMetadata(rawRoleMeta);
+
+  let displayName = user.email?.split('@')[0] ?? 'user';
+  try {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!profileError) {
+      const normalizedUsername = (profileData?.username ?? '').trim();
+      if (normalizedUsername) {
+        displayName = normalizedUsername;
+      }
+    }
+  } catch {
+    // Ignore profile lookup failures and fall back to email prefix.
+  }
 
   const basicUser: BasicUser = {
     id: user.id, // CORRIGÉ : On utilise le vrai ID string de Supabase
-    username: user.email?.split('@')[0] ?? 'user',
+    username: displayName,
     email: user.email ?? undefined,
     role,
-    rawRole,
+    rawRole: role,
   };
 
   return {
