@@ -1,3 +1,4 @@
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useManagedMoodHistory } from "@/hooks/use-managed-mood-history";
@@ -13,16 +14,12 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
-  Easing,
   FlatList,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -352,51 +349,14 @@ export function ProfileDashboard({
   const [isHistoryModalVisible, setHistoryModalVisible] = useState(false);
   const periods = ["Semaine", "Mois"];
 
-  // Animations bottom sheet (histoire + scope picker)
-  const historySheetTranslateY = useRef(new Animated.Value(300)).current;
-  const scopeSheetTranslateY = useRef(new Animated.Value(300)).current;
-
-  useEffect(() => {
-    historySheetTranslateY.stopAnimation();
-    if (!isHistoryModalVisible) {
-      historySheetTranslateY.setValue(300);
-      return;
-    }
-    historySheetTranslateY.setValue(300);
-    Animated.timing(historySheetTranslateY, {
-      toValue: 0,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [historySheetTranslateY, isHistoryModalVisible]);
-
+  // Gestion des feuilles (historique + sélection de portée)
   const openHistoryModal = useCallback(() => {
-    historySheetTranslateY.stopAnimation();
     setHistoryModalVisible(true);
-  }, [historySheetTranslateY]);
+  }, []);
 
   const closeHistoryModal = useCallback(() => {
-    historySheetTranslateY.stopAnimation();
-    Animated.timing(historySheetTranslateY, {
-      toValue: 300,
-      duration: 220,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setHistoryModalVisible(false));
-  }, [historySheetTranslateY]);
-
-  useEffect(() => {
-    if (!isScopePickerVisible) return;
-    scopeSheetTranslateY.setValue(300);
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScopePickerVisible]);
+    setHistoryModalVisible(false);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -480,13 +440,8 @@ export function ProfileDashboard({
     setScopePickerVisible(true);
   }, []);
   const closeScopePicker = useCallback(() => {
-    Animated.timing(scopeSheetTranslateY, {
-      toValue: 300,
-      duration: 200,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => setScopePickerVisible(false));
-  }, [scopeSheetTranslateY]);
+    setScopePickerVisible(false);
+  }, []);
 
   const Container = embedded ? View : SafeAreaView;
 
@@ -766,123 +721,93 @@ export function ProfileDashboard({
         )}
       </ScrollView>
 
-      <Modal
-        animationType="fade"
-        transparent={true}
+      <BottomSheetModal
         visible={isHistoryModalVisible}
-        onRequestClose={closeHistoryModal}
+        onClose={closeHistoryModal}
+        sheetStyle={styles.bottomSheet}
       >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeHistoryModal}
-            accessibilityRole="button"
-          />
-
-          <Animated.View
-            style={[
-              styles.historySheet,
-              { transform: [{ translateY: historySheetTranslateY }] },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
-                Historique des moods
+        <View style={styles.bottomSheetContent}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
+              Historique des moods
+            </Text>
+            <Pressable onPress={closeHistoryModal} accessibilityRole="button">
+              <Text style={styles.modalCloseButton}>Fermer</Text>
+            </Pressable>
+          </View>
+          {historyItems.length === 0 ? (
+            <View style={styles.historyEmptyState}>
+              <Text style={styles.historyEmptyText}>
+                Aucun mood enregistré pour cette sélection.
               </Text>
-              <Pressable onPress={closeHistoryModal}>
-                <Text style={styles.modalCloseButton}>Fermer</Text>
-              </Pressable>
             </View>
-            {historyItems.length === 0 ? (
-              <View style={styles.historyEmptyState}>
-                <Text style={styles.historyEmptyText}>
-                  Aucun mood enregistré pour cette sélection.
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={historyItems}
-                renderItem={({ item }) => <TimelineItem item={item} />}
-                keyExtractor={(item) => item.id.toString()}
-                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                contentContainerStyle={styles.historyList}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-          </Animated.View>
+          ) : (
+            <FlatList
+              data={historyItems}
+              renderItem={({ item }) => <TimelineItem item={item} />}
+              keyExtractor={(item) => item.id.toString()}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              contentContainerStyle={styles.historyList}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
-      </Modal>
+      </BottomSheetModal>
       {/* Sélecteur de portée */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      <BottomSheetModal
         visible={isScopePickerVisible}
-        onRequestClose={closeScopePicker}
+        onClose={closeScopePicker}
+        sheetStyle={styles.bottomSheet}
       >
-        <View style={styles.historyOverlay}>
-          <Pressable
-            style={styles.historyBackdrop}
-            onPress={closeScopePicker}
-            accessibilityRole="button"
-          />
-
-          <Animated.View
-            style={[
-              styles.historySheet,
-              { transform: [{ translateY: scopeSheetTranslateY }] },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
-                Choisissez la vue à afficher
+        <View style={styles.bottomSheetContent}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { flex: 1, flexShrink: 1 }]}>
+              Choisissez la vue à afficher
+            </Text>
+            <Pressable onPress={closeScopePicker} accessibilityRole="button">
+              <Text style={styles.modalCloseButton}>Fermer</Text>
+            </Pressable>
+          </View>
+          <View style={styles.modalOptionList}>
+            <Pressable
+              style={[
+                styles.timelineItem,
+                scope === "me" ? styles.timelineItemActive : null,
+              ]}
+              onPress={() => {
+                setScope("me");
+                setSelectedTeamId(null);
+                setTargetUserId(null);
+                closeScopePicker();
+              }}
+            >
+              <Text style={styles.timelineMood}>
+                Moi ({summary?.username ?? user?.username ?? "—"})
               </Text>
-              <Pressable onPress={closeScopePicker}>
-                <Text style={styles.modalCloseButton}>Fermer</Text>
-              </Pressable>
-            </View>
-            <View style={styles.modalOptionList}>
-              <Pressable
-                style={[
-                  styles.timelineItem,
-                  scope === "me" ? styles.timelineItemActive : null,
-                ]}
-                onPress={() => {
-                  setScope("me");
-                  setSelectedTeamId(null);
-                  setTargetUserId(null);
-                  closeScopePicker();
-                }}
-              >
-                <Text style={styles.timelineMood}>
-                  Moi ({summary?.username ?? user?.username ?? "—"})
-                </Text>
-              </Pressable>
-              {managedTeams.map((team) => {
-                const isActive = selectedTeamId === team.id && scope !== "me";
-                return (
-                  <Pressable
-                    key={team.id}
-                    style={[
-                      styles.timelineItem,
-                      isActive ? styles.timelineItemActive : null,
-                    ]}
-                    onPress={() => {
-                      setScope("team");
-                      setSelectedTeamId(team.id);
-                      setTargetUserId(null);
-                      closeScopePicker();
-                    }}
-                  >
-                    <Text style={styles.timelineMood}>Équipe {team.name}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Animated.View>
+            </Pressable>
+            {managedTeams.map((team) => {
+              const isActive = selectedTeamId === team.id && scope !== "me";
+              return (
+                <Pressable
+                  key={team.id}
+                  style={[
+                    styles.timelineItem,
+                    isActive ? styles.timelineItemActive : null,
+                  ]}
+                  onPress={() => {
+                    setScope("team");
+                    setSelectedTeamId(team.id);
+                    setTargetUserId(null);
+                    closeScopePicker();
+                  }}
+                >
+                  <Text style={styles.timelineMood}>Équipe {team.name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </Modal>
+      </BottomSheetModal>
     </Container>
   );
 }
@@ -1133,35 +1058,17 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingBottom: 44,
   },
-  historyOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(17, 24, 39, 0.35)",
-    justifyContent: "flex-end",
-  },
-  historyBackdrop: StyleSheet.absoluteFillObject,
-  historySheet: {
-    backgroundColor: "#FFFFFF",
+  bottomSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 32,
-    gap: 18,
     maxHeight: "80%",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0, 0, 0, 0.05)",
-    shadowColor: "#000000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
   },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 48,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
+  bottomSheetContent: {
+    gap: 18,
+    flexShrink: 1,
   },
   historyList: {
     paddingBottom: 32,
