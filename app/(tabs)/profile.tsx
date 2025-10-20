@@ -306,33 +306,51 @@ const MoodEvolutionChart = ({
 const TimelineItem = ({
   item,
   onPress,
+  showAuthor = false,
 }: {
   item: MoodEntry;
   onPress?: (entry: MoodEntry) => void;
-}) => (
-  <Pressable
-    onPress={onPress ? () => onPress(item) : undefined}
-    disabled={!onPress}
-    accessibilityRole={onPress ? "button" : undefined}
-    style={({ pressed }) => [
-      styles.timelineItem,
-      pressed && onPress ? styles.timelineItemPressed : null,
-    ]}
-  >
-    <Text style={styles.timelineEmoji}>{moodValueToEmoji(item.moodValue)}</Text>
-    <View style={styles.timelineContent}>
-      <View style={styles.timelineHeader}>
-        <Text style={styles.timelineMood}>Mood: {item.moodValue}/5</Text>
-        <Text style={styles.timelineDate}>
-          {format(new Date(item.loggedAt), "d MMM yyyy", { locale: fr })}
-        </Text>
-      </View>
-      <Text style={styles.timelineNote} numberOfLines={1}>
-        {item.reasonSummary || "Aucune note"}
+  showAuthor?: boolean;
+}) => {
+  const authorLabel =
+    item.source === "anonymous" || item.isAnonymous
+      ? "Anonyme"
+      : item.loggedBy?.username ?? "Anonyme";
+  const notePreview = item.note?.trim() ?? "";
+  const hasNote = notePreview.length > 0;
+
+  return (
+    <Pressable
+      onPress={onPress ? () => onPress(item) : undefined}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      style={({ pressed }) => [
+        styles.timelineItem,
+        pressed && onPress ? styles.timelineItemPressed : null,
+      ]}
+    >
+      <Text style={styles.timelineEmoji}>
+        {moodValueToEmoji(item.moodValue)}
       </Text>
-    </View>
-  </Pressable>
-);
+      <View style={styles.timelineContent}>
+        <View style={styles.timelineHeader}>
+          <Text style={styles.timelineMood}>Mood: {item.moodValue}/5</Text>
+          <Text style={styles.timelineDate}>
+            {format(new Date(item.loggedAt), "d MMM yyyy", { locale: fr })}
+          </Text>
+        </View>
+        {showAuthor ? (
+          <Text style={styles.timelineAuthor}>{authorLabel}</Text>
+        ) : null}
+        {hasNote ? (
+          <Text style={styles.timelineNote} numberOfLines={1}>
+            {notePreview}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+};
 
 type ProfileDashboardProps = {
   embedded?: boolean;
@@ -380,6 +398,7 @@ export function ProfileDashboard({
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<MoodEntry | null>(null);
   const periods = ["Semaine", "Mois"];
+  const showAuthorNames = scope === "team";
 
   // Gestion des feuilles (historique + sélection de portée)
   const openHistoryModal = useCallback(() => {
@@ -761,7 +780,11 @@ export function ProfileDashboard({
               </View>
               <View style={styles.timelineContainer}>
                 {historyItems.slice(0, 2).map((item) => (
-                  <TimelineItem key={item.id} item={item} />
+                  <TimelineItem
+                    key={item.id}
+                    item={item}
+                    showAuthor={showAuthorNames}
+                  />
                 ))}
               </View>
             </View>
@@ -917,7 +940,11 @@ export function ProfileDashboard({
             <FlatList
               data={historyItems}
               renderItem={({ item }) => (
-                <TimelineItem item={item} onPress={handleShowHistoryDetail} />
+                <TimelineItem
+                  item={item}
+                  onPress={handleShowHistoryDetail}
+                  showAuthor={showAuthorNames}
+                />
               )}
               keyExtractor={(item) => item.id.toString()}
               ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -1165,6 +1192,12 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   timelineDate: { fontSize: 14, color: theme.colors.subtleLight },
+  timelineAuthor: {
+    marginTop: 2,
+    fontSize: 13,
+    color: theme.colors.foregroundLight,
+    fontWeight: "500",
+  },
   timelineNote: {
     marginTop: 4,
     fontSize: 14,

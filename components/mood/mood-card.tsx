@@ -53,17 +53,16 @@ export const MoodCard = ({
       : "Mixte";
   const authorName = useMemo(() => {
     if (!isManagerViewer) {
-      return "Un collègue";
+      return "Anonyme";
     }
     const visibilityForManagers = mood.visibility?.showReasonToManagers;
     if (mood.isAnonymous || visibilityForManagers !== "visible") {
-      return "Un collègue";
+      return "Anonyme";
     }
-    return mood.loggedBy?.username ?? "Un collègue";
+    return mood.loggedBy?.username ?? "Anonyme";
   }, [isManagerViewer, mood.isAnonymous, mood.loggedBy?.username, mood.visibility?.showReasonToManagers]);
   const teamLabel = mood.team?.name ? `Équipe ${mood.team.name}` : null;
   const noteText = mood.note?.trim() ?? null;
-  const reasonText = mood.reasonSummary?.trim() ?? null;
   const canViewDetails = useMemo(() => {
     if (isManagerViewer) {
       return (mood.visibility?.showReasonToManagers ?? "anonymized") !== "hidden";
@@ -71,12 +70,12 @@ export const MoodCard = ({
     return (mood.visibility?.showReasonToPeers ?? "anonymized") !== "hidden";
   }, [isManagerViewer, mood.visibility?.showReasonToManagers, mood.visibility?.showReasonToPeers]);
 
- const primaryMessage = useMemo(() => {
-   if (!canViewDetails) {
-     return null;
-   }
-    return noteText ?? reasonText;
-  }, [canViewDetails, noteText, reasonText]);
+  const primaryMessage = useMemo(() => {
+    if (!canViewDetails) {
+      return null;
+    }
+    return noteText;
+  }, [canViewDetails, noteText]);
   const normalizedMessage = primaryMessage ?? null;
   const hasLongMessage = (normalizedMessage?.length ?? 0) > 180;
 
