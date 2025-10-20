@@ -37,6 +37,8 @@ export interface TeamSummary {
   slug?: string;
 }
 
+export type MoodEntrySource = 'standard' | 'anonymous';
+
 export interface MoodEntry {
   id: number;
   moodValue: number;
@@ -54,6 +56,7 @@ export interface MoodEntry {
   loggedBy?: BasicUser | null;
   additionalViewers?: BasicUser[];
   team?: TeamSummary | null;
+  source?: MoodEntrySource;
 }
 
 export interface MoodTrend {

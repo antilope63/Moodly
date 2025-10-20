@@ -10,6 +10,10 @@ export const SUPABASE_SERVICE_ROLE_KEY =
 
 export const APP_NAME = 'Moodly';
 
+// Anonymisation (hash salé côté client pour les publications anonymes)
+export const ANONYMIZATION_SECRET =
+  process.env.EXPO_PUBLIC_ANONYMIZATION_SECRET || process.env.REACT_APP_ANONYMIZATION_SECRET || '';
+
 // Dev/testing: bypass auth (never enable in production)
 export const AUTH_BYPASS =
   (process.env.EXPO_PUBLIC_AUTH_BYPASS || '').toLowerCase() === '1' ||

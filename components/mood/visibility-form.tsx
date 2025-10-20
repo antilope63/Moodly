@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 
-import type { VisibilityLevel, VisibilitySettings } from "@/types/mood";
 import { Chip } from "@/components/ui/chip";
 import { Palette } from "@/constants/theme";
+import type { VisibilityLevel, VisibilitySettings } from "@/types/mood";
 
 type VisibilityFormProps = {
   value: VisibilitySettings;
@@ -41,6 +41,7 @@ export const VisibilityForm = ({
   }, [value.allowCustomRecipients]);
 
   useEffect(() => {
+    if (isAnonymous) return;
     if (
       value.showReasonToPeers !== "hidden" &&
       value.showReasonToPeers !== "visible"
@@ -48,7 +49,7 @@ export const VisibilityForm = ({
       onChange({ ...value, showReasonToPeers: "hidden" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.showReasonToPeers]);
+  }, [value.showReasonToPeers, isAnonymous]);
 
   const handleLevelChange = (
     field: "showReasonToPeers" | "showReasonToManagers" | "showReasonToHr",
@@ -61,6 +62,13 @@ export const VisibilityForm = ({
   };
 
   const showAudienceControls = !value.shareMoodWithAll;
+  const managerLevels = useMemo(
+    () =>
+      isAnonymous
+        ? (MANAGER_LEVELS.filter((level) => level !== "anonymized") as VisibilityLevel[])
+        : MANAGER_LEVELS,
+    [isAnonymous]
+  );
 
   return (
     <View
@@ -78,32 +86,32 @@ export const VisibilityForm = ({
           }}
         />
       </View>
-      <Text style={styles.subtitle}>
-        Contrôle la visibilité de ta raison selon le public.
-      </Text>
+      <Text style={styles.subtitle}>Contrôle la visibilité de ton mood.</Text>
       {value.shareMoodWithAll ? (
         <Text style={styles.warning}>
-          Même en partage global, les collègues te vois anonyme.
+          Tes moods sont anonymisés pour tes collègues, même si tu actives le
+          mode partage global. Cependant, ton manager verra qui l&apos;a publié.
         </Text>
       ) : null}
 
-      {showAnonymityToggle && showAudienceControls ? (
-        <View style={styles.row}>
-          <Text style={styles.title}>Rester anonyme ?</Text>
-          <Switch
-            value={Boolean(isAnonymous)}
-            onValueChange={(next) => {
-              onAnonymousChange?.(next);
-              if (next) {
-                onChange({
-                  ...value,
-                  showReasonToPeers: "anonymized",
-                  showReasonToManagers: "anonymized",
-                });
-              }
-            }}
-          />
-        </View>
+      {showAnonymityToggle ? (
+        <>
+          <View style={styles.row}>
+            <Text style={styles.title}>Publier anonymement</Text>
+            <Switch
+              value={Boolean(isAnonymous)}
+              onValueChange={(next) => {
+                onAnonymousChange?.(next);
+                if (next && value.shareMoodWithAll) {
+                  onChange({ ...value, shareMoodWithAll: false });
+                }
+              }}
+            />
+          </View>
+          <Text style={styles.helper}>
+            Masque ton nom et ton email pour tous les lecteurs autorisés.
+          </Text>
+        </>
       ) : null}
 
       {showAudienceControls ? (
@@ -112,14 +120,11 @@ export const VisibilityForm = ({
             <Text style={styles.sectionTitle}>Pour les collègues</Text>
             <View style={styles.levelRow}>
               {PEER_LEVELS.map((level) => (
-                <Chip
-                  key={level}
-                  label={levelLabel[level]}
-                  selected={value.showReasonToPeers === level}
+              <Chip
+                key={level}
+                label={levelLabel[level]}
+                selected={value.showReasonToPeers === level}
                   onPress={() => {
-                    if (level !== "anonymized") {
-                      onAnonymousChange?.(false);
-                    }
                     handleLevelChange("showReasonToPeers", level);
                   }}
                 />
@@ -130,15 +135,12 @@ export const VisibilityForm = ({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Pour ton manager</Text>
             <View style={styles.levelRow}>
-              {MANAGER_LEVELS.map((level) => (
-                <Chip
-                  key={level}
-                  label={levelLabel[level]}
-                  selected={value.showReasonToManagers === level}
+              {managerLevels.map((level) => (
+              <Chip
+                key={level}
+                label={levelLabel[level]}
+                selected={value.showReasonToManagers === level}
                   onPress={() => {
-                    if (level !== "anonymized") {
-                      onAnonymousChange?.(false);
-                    }
                     handleLevelChange("showReasonToManagers", level);
                   }}
                 />
@@ -194,6 +196,11 @@ const styles = StyleSheet.create({
   subtitle: {
     color: Palette.textSecondary,
     fontSize: 13,
+  },
+  helper: {
+    color: Palette.textSecondary,
+    fontSize: 12,
+    marginTop: -8,
   },
   section: {
     gap: 12,

@@ -1,8 +1,10 @@
+import { getAnonymizedAuthorToken, getAnonymizedEmailCipher } from '@/lib/anonymization';
 import { supabase } from '@/lib/supabase';
 import type {
   BasicUser,
   MoodContext,
   MoodEntry,
+  MoodEntrySource,
   RoleType,
   TeamSummary,
   VisibilitySettings,
@@ -21,6 +23,7 @@ type DbMoodEntry = {
   support_choice?: string | null;
   energy_choice?: string | null;
   pride_percent?: number | null;
+  team_id?: number | null;
   user_id?: string; // pour enrichir loggedBy
   user_email?: string | null;
 };
@@ -29,70 +32,105 @@ type DbMoodEntryRow = DbMoodEntry & {
   team?: { id: number; name: string; slug?: string | null } | null;
 };
 
-const mapMoodEntry = (row: DbMoodEntryRow): MoodEntry => ({
-  id: row.id,
-  moodValue: row.mood_value,
-  context: row.context,
-  isAnonymous: row.is_anonymous,
-  reasonSummary: row.reason_summary ?? undefined,
-  note: row.note ?? undefined,
-  loggedAt: row.logged_at,
-  visibility: row.visibility,
-  categories: [],
-  freedomChoice: row.freedom_choice ?? undefined,
-  supportChoice: row.support_choice ?? undefined,
-  energyChoice: row.energy_choice ?? undefined,
-  pridePercent: row.pride_percent ?? undefined,
-  loggedBy: null,
-  additionalViewers: [],
-  team: row.team
-    ? {
-        id: row.team.id,
-        name: row.team.name,
-        slug: row.team.slug ?? undefined,
-      }
-    : null,
-});
+type AnonymousDbMoodEntry = Omit<DbMoodEntry, 'user_id' | 'user_email'> & {
+  author_token: string;
+  author_email_cipher?: string | null;
+};
+
+type AnonymousDbMoodEntryRow = AnonymousDbMoodEntry & {
+  team?: { id: number; name: string; slug?: string | null } | null;
+};
+
+const normalizeTeam = (teamRaw: any) => {
+  if (!teamRaw) return null;
+  const team = Array.isArray(teamRaw) ? teamRaw[0] ?? null : teamRaw;
+  if (!team) return null;
+  return {
+    id: Number(team.id),
+    name: String(team.name),
+    slug: (team.slug as string | null) ?? null,
+  };
+};
+
+const mapDbRowToMoodEntry = (
+  row: DbMoodEntryRow | AnonymousDbMoodEntryRow,
+  source: MoodEntrySource,
+  overrides: Partial<MoodEntry> = {},
+): MoodEntry => {
+  const base: MoodEntry = {
+    id: row.id,
+    moodValue: row.mood_value,
+    context: row.context,
+    isAnonymous: source === 'anonymous' ? true : row.is_anonymous,
+    reasonSummary: row.reason_summary ?? undefined,
+    note: row.note ?? undefined,
+    loggedAt: row.logged_at,
+    visibility: row.visibility,
+    categories: [],
+    freedomChoice: row.freedom_choice ?? undefined,
+    supportChoice: row.support_choice ?? undefined,
+    energyChoice: row.energy_choice ?? undefined,
+    pridePercent: row.pride_percent ?? undefined,
+    loggedBy: null,
+    additionalViewers: [],
+    team: row.team
+      ? {
+          id: row.team.id,
+          name: row.team.name,
+          slug: row.team.slug ?? undefined,
+        }
+      : null,
+    source,
+  };
+  return { ...base, ...overrides, source };
+};
 
 // Normalise la forme renvoyée par Supabase (team parfois tableau si FK absente)
 const normalizeDbRow = (row: any): DbMoodEntryRow => {
-  const teamRaw = (row.team ?? null) as any;
-  const team = Array.isArray(teamRaw)
-    ? (teamRaw[0]
-        ? {
-            id: Number(teamRaw[0].id),
-            name: String(teamRaw[0].name),
-            slug: (teamRaw[0].slug as string | null) ?? null,
-          }
-        : null)
-    : teamRaw
-    ? {
-        id: Number(teamRaw.id),
-        name: String(teamRaw.name),
-        slug: (teamRaw.slug as string | null) ?? null,
-      }
-    : null;
-
   return {
     id: row.id,
     mood_value: row.mood_value,
-    mood_label: row.mood_label,
     context: row.context,
     is_anonymous: row.is_anonymous,
-    reason_summary: row.reason_summary,
-    note: row.note,
-    logged_at: row.logged_at,
-    visibility: row.visibility,
-    freedom_choice: row.freedom_choice,
-    support_choice: row.support_choice,
-    energy_choice: row.energy_choice,
-    pride_percent: row.pride_percent,
-    team,
+  reason_summary: row.reason_summary,
+  note: row.note,
+  logged_at: row.logged_at,
+  visibility: row.visibility,
+  freedom_choice: row.freedom_choice,
+  support_choice: row.support_choice,
+  energy_choice: row.energy_choice,
+  pride_percent: row.pride_percent,
+  team_id: row.team_id,
+  user_id: row.user_id,
+  user_email: row.user_email,
+  team: normalizeTeam(row.team),
   } as DbMoodEntryRow;
 };
 
+const normalizeAnonymousDbRow = (row: any): AnonymousDbMoodEntryRow => ({
+  id: row.id,
+  mood_value: row.mood_value,
+  context: row.context,
+  is_anonymous: row.is_anonymous,
+  reason_summary: row.reason_summary,
+  note: row.note,
+  logged_at: row.logged_at,
+  visibility: row.visibility,
+  freedom_choice: row.freedom_choice,
+  support_choice: row.support_choice,
+  energy_choice: row.energy_choice,
+  pride_percent: row.pride_percent,
+  team_id: row.team_id,
+  author_token: row.author_token,
+  author_email_cipher: row.author_email_cipher,
+  team: normalizeTeam(row.team),
+});
+
 const moodEntrySelect =
-  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, freedom_choice, support_choice, energy_choice, pride_percent, user_id, user_email, team:teams(id,name,slug)';
+  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, freedom_choice, support_choice, energy_choice, pride_percent, team_id, user_id, user_email, team:teams(id,name,slug)';
+
+const anonymousMoodEntrySelect =
+  'id, mood_value, context, is_anonymous, reason_summary, note, logged_at, visibility, freedom_choice, support_choice, energy_choice, pride_percent, team_id, author_token, author_email_cipher, team:teams(id,name,slug)';
 
 export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
   // Récupère l'utilisateur connecté (uuid/email)
@@ -104,6 +142,10 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
   if (!currentUser) {
     return [];
   }
+
+  const currentUserAnonToken = await getAnonymizedAuthorToken(currentUser.id).catch((error) => {
+    throw error;
+  });
 
   // Récupère l'équipe du user via table team_members
   const { data: membership, error: membershipError } = await supabase
@@ -150,9 +192,24 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
     query = query.not('user_id', 'in', inList);
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, { data: anonymousData, error: anonymousError }] = await Promise.all([
+    query,
+    supabase
+      .from('anonymous_mood_entries')
+      .select(anonymousMoodEntrySelect)
+      .eq('team_id', teamId)
+      .gte('logged_at', todayStart.toISOString())
+      .lt('logged_at', todayEnd.toISOString())
+      .order('logged_at', { ascending: false })
+      .limit(25)
+      .neq('author_token', currentUserAnonToken),
+  ]);
+
   if (error) throw new Error(error.message);
+  if (anonymousError) throw new Error(anonymousError.message);
+
   const rows = (data ?? []) as any[];
+  const anonymousRows = (anonymousData ?? []) as any[];
   const userIds = Array.from(
     new Set(
       rows
@@ -175,11 +232,10 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
     });
   }
 
-  return rows.map((row: any) => {
+  const standardEntries = rows.map((row: any) => {
     const normalized = normalizeDbRow(row);
-    const base = mapMoodEntry(normalized);
     const profile = row.user_id ? profilesMap.get(row.user_id as string) : undefined;
-    const fallbackUsername = (row.user_email as string | null)?.split('@')[0] ?? 'Collègue';
+    const fallbackUsername = (row.user_email as string | null)?.split('@')[0] ?? 'Anonyme';
     const loggedBy: BasicUser | null = row.user_id
       ? {
           id: row.user_id as string,
@@ -189,8 +245,21 @@ export const fetchMoodFeed = async (): Promise<MoodEntry[]> => {
           rawRole: null,
         }
       : null;
-    return { ...base, loggedBy };
+    return mapDbRowToMoodEntry(normalized, 'standard', { loggedBy });
   });
+
+  const anonymousEntries = anonymousRows.map((row: any) => {
+    const normalized = normalizeAnonymousDbRow(row);
+    return mapDbRowToMoodEntry(normalized, 'anonymous', { loggedBy: null });
+  });
+
+  const combined = [...standardEntries, ...anonymousEntries];
+  combined.sort(
+    (a, b) =>
+      new Date(b.loggedAt).getTime() -
+      new Date(a.loggedAt).getTime(),
+  );
+  return combined.slice(0, 25);
 };
 
 export const fetchMyTodayMoodEntry = async (): Promise<MoodEntry | null> => {
@@ -204,24 +273,46 @@ export const fetchMyTodayMoodEntry = async (): Promise<MoodEntry | null> => {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
 
-  const { data, error } = await supabase
-    .from('mood_entries')
-    .select(moodEntrySelect)
-    .eq('user_id', me.id)
-    .gte('logged_at', start.toISOString())
-    .lt('logged_at', end.toISOString())
-    .order('logged_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
-  if (!data) return null;
-  return mapMoodEntry(normalizeDbRow(data));
-};
+  const authorToken = await getAnonymizedAuthorToken(me.id);
 
+  const [{ data, error }, { data: anonymousData, error: anonymousError }] = await Promise.all([
+    supabase
+      .from('mood_entries')
+      .select(moodEntrySelect)
+      .eq('user_id', me.id)
+      .gte('logged_at', start.toISOString())
+      .lt('logged_at', end.toISOString())
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('anonymous_mood_entries')
+      .select(anonymousMoodEntrySelect)
+      .eq('author_token', authorToken)
+      .gte('logged_at', start.toISOString())
+      .lt('logged_at', end.toISOString())
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
+  if (anonymousError && (anonymousError as any).code !== 'PGRST116') throw new Error(anonymousError.message);
+
+  if (data) {
+    return mapDbRowToMoodEntry(normalizeDbRow(data), 'standard');
+  }
+  if (anonymousData) {
+    return mapDbRowToMoodEntry(normalizeAnonymousDbRow(anonymousData), 'anonymous');
+  }
+  return null;
+};
 export const updateMoodEntry = async (
   id: number,
   payload: UpdateMoodEntryPayload,
 ): Promise<MoodEntry> => {
+  const source: MoodEntrySource = payload.source ?? 'standard';
+  const targetIsAnonymous = payload.isAnonymous;
+
   const updatePayload = {
     mood_value: payload.moodValue,
     context: payload.context,
@@ -237,19 +328,121 @@ export const updateMoodEntry = async (
       typeof payload.pridePercent === 'number' ? payload.pridePercent : null,
   } as const;
 
-  const { error: upError } = await supabase
-    .from('mood_entries')
-    .update(updatePayload)
-    .eq('id', id);
-  if (upError) throw new Error(upError.message);
+  if (source === 'standard' && !targetIsAnonymous) {
+    const { error: upError } = await supabase
+      .from('mood_entries')
+      .update(updatePayload)
+      .eq('id', id);
+    if (upError) throw new Error(upError.message);
 
-  const { data, error } = await supabase
-    .from('mood_entries')
-    .select(moodEntrySelect)
-    .eq('id', id)
-    .single();
-  if (error) throw new Error(error.message);
-  return mapMoodEntry(normalizeDbRow(data));
+    const { data, error } = await supabase
+      .from('mood_entries')
+      .select(moodEntrySelect)
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return mapDbRowToMoodEntry(normalizeDbRow(data), 'standard');
+  }
+
+  if (source === 'anonymous' && targetIsAnonymous) {
+    const { error: upError } = await supabase
+      .from('anonymous_mood_entries')
+      .update(updatePayload)
+      .eq('id', id);
+    if (upError) throw new Error(upError.message);
+
+    const { data, error } = await supabase
+      .from('anonymous_mood_entries')
+      .select(anonymousMoodEntrySelect)
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return mapDbRowToMoodEntry(normalizeAnonymousDbRow(data), 'anonymous');
+  }
+
+  if (source === 'standard' && targetIsAnonymous) {
+    const { data: existing, error: existingError } = await supabase
+      .from('mood_entries')
+      .select('team_id, user_id, user_email')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    if (!existing) throw new Error("Publication introuvable pour la convertir en anonyme.");
+
+    const authorToken = await getAnonymizedAuthorToken(existing.user_id as string);
+    const emailCipher = await getAnonymizedEmailCipher(
+      payload.userEmail ?? (existing.user_email as string | null) ?? null,
+    );
+
+    const insertPayload = {
+      team_id: existing.team_id,
+      author_token: authorToken,
+      author_email_cipher: emailCipher,
+      ...updatePayload,
+    };
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('anonymous_mood_entries')
+      .insert(insertPayload)
+      .select(anonymousMoodEntrySelect)
+      .single();
+    if (insertError || !inserted) throw new Error(insertError?.message ?? 'Conversion impossible.');
+
+    const { error: deleteError } = await supabase
+      .from('mood_entries')
+      .delete()
+      .eq('id', id);
+    if (deleteError) {
+      await supabase.from('anonymous_mood_entries').delete().eq('id', inserted.id).catch(() => {});
+      throw new Error(deleteError.message);
+    }
+
+    return mapDbRowToMoodEntry(normalizeAnonymousDbRow(inserted), 'anonymous');
+  }
+
+  if (source === 'anonymous' && !targetIsAnonymous) {
+    const { data: existing, error: existingError } = await supabase
+      .from('anonymous_mood_entries')
+      .select('team_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    if (!existing) throw new Error("Publication anonyme introuvable pour la convertir.");
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw new Error(authError.message);
+    const me = authData?.user;
+    if (!me) {
+      throw new Error("Utilisateur non authentifié pour convertir la publication.");
+    }
+
+    const insertPayload = {
+      team_id: existing.team_id,
+      user_id: me.id,
+      user_email: payload.userEmail ?? me.email ?? null,
+      ...updatePayload,
+    };
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('mood_entries')
+      .insert(insertPayload)
+      .select(moodEntrySelect)
+      .single();
+    if (insertError || !inserted) throw new Error(insertError?.message ?? 'Conversion impossible.');
+
+    const { error: deleteError } = await supabase
+      .from('anonymous_mood_entries')
+      .delete()
+      .eq('id', id);
+    if (deleteError) {
+      await supabase.from('mood_entries').delete().eq('id', inserted.id).catch(() => {});
+      throw new Error(deleteError.message);
+    }
+
+    return mapDbRowToMoodEntry(normalizeDbRow(inserted), 'standard');
+  }
+
+  throw new Error("Type de publication inconnu ou non pris en charge.");
 };
 
 export const fetchMoodEntryById = async (id: number): Promise<MoodEntry | null> => {
@@ -259,19 +452,51 @@ export const fetchMoodEntryById = async (id: number): Promise<MoodEntry | null> 
     .eq('id', id)
     .maybeSingle();
   if (error && (error as any).code !== 'PGRST116') throw new Error(error.message);
-  if (!data) return null;
-  return mapMoodEntry(normalizeDbRow(data));
+  if (data) {
+    return mapDbRowToMoodEntry(normalizeDbRow(data), 'standard');
+  }
+
+  const { data: anonymousData, error: anonymousError } = await supabase
+    .from('anonymous_mood_entries')
+    .select(anonymousMoodEntrySelect)
+    .eq('id', id)
+    .maybeSingle();
+  if (anonymousError && (anonymousError as any).code !== 'PGRST116') {
+    throw new Error(anonymousError.message);
+  }
+  if (!anonymousData) return null;
+  return mapDbRowToMoodEntry(normalizeAnonymousDbRow(anonymousData), 'anonymous');
 };
 
 export const fetchMoodHistory = async (): Promise<MoodEntry[]> => {
-  const { data, error } = await supabase
-    .from('mood_entries')
-    .select(moodEntrySelect)
-    .order('logged_at', { ascending: false })
-    .limit(100);
+  const [{ data, error }, { data: anonymousData, error: anonymousError }] = await Promise.all([
+    supabase
+      .from('mood_entries')
+      .select(moodEntrySelect)
+      .order('logged_at', { ascending: false })
+      .limit(100),
+    supabase
+      .from('anonymous_mood_entries')
+      .select(anonymousMoodEntrySelect)
+      .order('logged_at', { ascending: false })
+      .limit(100),
+  ]);
   if (error) throw new Error(error.message);
+  if (anonymousError) throw new Error(anonymousError.message);
 
-  return (data ?? []).map((row: any) => mapMoodEntry(normalizeDbRow(row)));
+  const standardEntries = (data ?? []).map((row: any) =>
+    mapDbRowToMoodEntry(normalizeDbRow(row), 'standard'),
+  );
+  const anonymousEntries = (anonymousData ?? []).map((row: any) =>
+    mapDbRowToMoodEntry(normalizeAnonymousDbRow(row), 'anonymous'),
+  );
+  const combined = [...standardEntries, ...anonymousEntries];
+  combined.sort(
+    (a, b) =>
+      new Date(b.loggedAt).getTime() -
+      new Date(a.loggedAt).getTime(),
+  );
+  return combined;
 };
 
 export type CreateMoodEntryPayload = {
@@ -284,6 +509,7 @@ export type CreateMoodEntryPayload = {
   visibility: VisibilitySettings;
   teamId?: number | null;
   userId?: string;
+  userEmail?: string | null;
   freedomChoice?: string | null;
   supportChoice?: string | null;
   energyChoice?: string | null;
@@ -302,14 +528,17 @@ export type UpdateMoodEntryPayload = {
   supportChoice?: string | null;
   energyChoice?: string | null;
   pridePercent?: number | null;
+  source?: MoodEntrySource;
+  userEmail?: string | null;
 };
 
 export const createMoodEntry = async (
   payload: CreateMoodEntryPayload,
 ): Promise<MoodEntry> => {
-  const { teamId: explicitTeamId, userId, ...rest } = payload;
+  const { teamId: explicitTeamId, userId, userEmail, ...rest } = payload;
 
   let resolvedUserId = userId;
+  let resolvedEmail = userEmail ?? null;
   if (!resolvedUserId) {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError) throw new Error(authError.message);
@@ -317,6 +546,12 @@ export const createMoodEntry = async (
       throw new Error('Connecte-toi pour partager ton humeur.');
     }
     resolvedUserId = authData.user.id;
+    resolvedEmail = authData.user.email ?? null;
+  } else if (!resolvedEmail) {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (!authError && authData?.user?.id === resolvedUserId) {
+      resolvedEmail = authData.user.email ?? null;
+    }
   }
 
   let teamId = explicitTeamId ?? null;
@@ -342,8 +577,7 @@ export const createMoodEntry = async (
     );
   }
 
-  const insertPayload = {
-    user_id: resolvedUserId,
+  const commonPayload = {
     team_id: teamId,
     mood_value: rest.moodValue,
     context: rest.context,
@@ -359,28 +593,43 @@ export const createMoodEntry = async (
       typeof rest.pridePercent === 'number' ? rest.pridePercent : null,
   };
 
+  if (rest.isAnonymous) {
+    const authorToken = await getAnonymizedAuthorToken(resolvedUserId);
+    const emailCipher = await getAnonymizedEmailCipher(resolvedEmail);
+    const insertPayload = {
+      ...commonPayload,
+      author_token: authorToken,
+      author_email_cipher: emailCipher,
+    };
+
+    const { data, error } = await supabase
+      .from('anonymous_mood_entries')
+      .insert(insertPayload)
+      .select(anonymousMoodEntrySelect)
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? 'Impossible de créer ton humeur.');
+    }
+
+    return mapDbRowToMoodEntry(normalizeAnonymousDbRow(data), 'anonymous');
+  }
+
+  const insertPayload = {
+    ...commonPayload,
+    user_id: resolvedUserId,
+    user_email: resolvedEmail,
+  };
+
   const { data, error } = await supabase
     .from('mood_entries')
     .insert(insertPayload)
-    .select('id')
+    .select(moodEntrySelect)
     .single();
   if (error || !data) {
     throw new Error(error?.message ?? 'Impossible de créer ton humeur.');
   }
 
-  const { data: fullRow, error: fetchError } = await supabase
-    .from('mood_entries')
-    .select(moodEntrySelect)
-    .eq('id', data.id)
-    .single();
-  if (fetchError || !fullRow) {
-    throw new Error(
-      fetchError?.message ??
-        'Humeur enregistrée mais impossible de la relire.',
-    );
-  }
-
-  return mapMoodEntry(normalizeDbRow(fullRow));
+  return mapDbRowToMoodEntry(normalizeDbRow(data), 'standard');
 };
 
 export type ProfileSummary = {
@@ -411,6 +660,21 @@ export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
     .select('id', { head: true, count: 'exact' })
     .eq('user_id', authData.user.id);
   if (countError) throw new Error(countError.message);
+
+  let anonymousCount = 0;
+  try {
+    const authorToken = await getAnonymizedAuthorToken(authData.user.id);
+    const { count: aCount, error: anonCountError } = await supabase
+      .from('anonymous_mood_entries')
+      .select('id', { head: true, count: 'exact' })
+      .eq('author_token', authorToken);
+    if (anonCountError) {
+      throw anonCountError;
+    }
+    anonymousCount = aCount ?? 0;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
 
   let role: RoleType | null = null;
   const membershipRole = (membership?.role as string | null) ?? null;
@@ -457,7 +721,7 @@ export const fetchProfileSummary = async (): Promise<ProfileSummary> => {
   return {
     role,
     team,
-    moodsCount: count ?? 0,
+    moodsCount: (count ?? 0) + anonymousCount,
     username,
     email,
   };

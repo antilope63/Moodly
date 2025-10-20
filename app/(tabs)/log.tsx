@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Keyboard,
   Platform,
   Pressable,
   SafeAreaView,
@@ -35,7 +36,7 @@ import {
   fetchMyTodayMoodEntry,
   updateMoodEntry,
 } from "@/services/mood";
-import type { MoodContext, VisibilitySettings } from "@/types/mood";
+import type { MoodContext, MoodEntrySource, VisibilitySettings } from "@/types/mood";
 
 const parseMoodParam = (
   value: string | string[] | undefined
@@ -64,6 +65,7 @@ export default function LogMoodScreen() {
   const { user } = useAuth();
   const initialMoodFromParams = parseMoodParam(params?.moodValue);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingSource, setEditingSource] = useState<MoodEntrySource>("standard");
   const [moodValue, setMoodValue] = useState<number>(
     initialMoodFromParams ?? 4
   );
@@ -233,14 +235,7 @@ export default function LogMoodScreen() {
       if (next) {
         syncVisibility((prev) => ({
           ...prev,
-          showReasonToPeers: "anonymized",
-          showReasonToManagers: "anonymized",
-        }));
-      } else {
-        syncVisibility((prev) => ({
-          ...prev,
-          showReasonToPeers: prev.showReasonToPeers === "anonymized" ? "visible" : prev.showReasonToPeers,
-          showReasonToManagers: prev.showReasonToManagers === "anonymized" ? "visible" : prev.showReasonToManagers,
+          shareMoodWithAll: false,
         }));
       }
     },
@@ -251,8 +246,14 @@ export default function LogMoodScreen() {
     let mounted = true;
     fetchMyTodayMoodEntry()
       .then((entry) => {
-        if (!mounted || !entry) return;
+        if (!mounted) return;
+        if (!entry) {
+          setEditingId(null);
+          setEditingSource("standard");
+          return;
+        }
         setEditingId(entry.id);
+        setEditingSource(entry.source ?? "standard");
         setMoodValue(entry.moodValue);
         setContext(entry.context);
         setIsAnonymous(entry.isAnonymous);
@@ -321,6 +322,8 @@ export default function LogMoodScreen() {
           supportChoice,
           energyChoice,
           pridePercent: prideValue,
+          source: editingSource,
+          userEmail: user.email ?? null,
         });
       } else {
         await createMoodEntry({
@@ -332,6 +335,7 @@ export default function LogMoodScreen() {
           loggedAt: new Date().toISOString(),
           visibility: normalizedVisibility,
           userId: user.id,
+          userEmail: user.email ?? null,
           freedomChoice,
           supportChoice,
           energyChoice,
@@ -347,6 +351,7 @@ export default function LogMoodScreen() {
 
       setNote("");
       setIsAnonymous(false);
+      setEditingSource("standard");
       setMoodValue(4);
       syncVisibility(() => DEFAULT_VISIBILITY);
       setFreedomChoice(null);
@@ -405,6 +410,7 @@ export default function LogMoodScreen() {
       });
       return;
     }
+    Keyboard.dismiss();
     setConfigOpen(true);
   }, [canOpenConfig, toast]);
 
@@ -417,7 +423,8 @@ export default function LogMoodScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.select({ ios: 0, android: 80 }) ?? 0}
         style={styles.flex}
       >
         <ScrollView
