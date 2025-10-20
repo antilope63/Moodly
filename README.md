@@ -90,12 +90,11 @@ echo ".env créé avec succès ✅"
 #### ⚠️ Sur Windows :
 
 ```bash
-echo "Création du fichier .env..." && cat <<'EOF' > .env
-EXPO_PUBLIC_SUPABASE_URL=VOTRE_URL_SUPABASE
+"EXPO_PUBLIC_SUPABASE_URL=VOTRE_URL_SUPABASE
 EXPO_PUBLIC_SUPABASE_ANON_KEY=VOTRE_CLÉ_ANON_SUPABASE
-EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=VOTRE_CLÉ_SERVICE_SUPABASE
-EOF
-echo ".env créé avec succès ✅"
+EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=VOTRE_CLÉ_SERVICE_SUPABASE" | Out-File -Encoding utf8 .env
+
+Write-Host ".env créé avec succès ✅"
 ```
 
 Vous trouverez ces informations dans les paramètres **API** de votre projet Supabase
