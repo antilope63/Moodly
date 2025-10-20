@@ -74,7 +74,7 @@ npm install
 
 ### 3. Configuration
 
-Pour créez un fichier .env à la racine du projet et copier ce code puis ajoutez-y vos clés d'environnement Supabase :
+Pour créer un fichier .env à la racine du projet, copiez la commande ci-dessous puis ajoutez vos clés d'environnement Supabase dans le fichier .env créé :
 
 #### ⚠️ Sur mac OS et linux :
 
